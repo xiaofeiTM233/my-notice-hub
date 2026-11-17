@@ -19,8 +19,8 @@
 | `npm run start` | 启动构建产物 |
 | `npm run lint` | ESLint（含 Next 规则） |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm run seed` | 初始化 `Setting` 与样例数据（Phase 2 提供） |
-| `npm run smoke` | API 冒烟（Phase 3 提供，需要 `npm run dev` 在跑） |
+| `npm run seed` | 初始化 `Setting`（管理员密码、存储配置）与样例文章、示例媒体；已存在则跳过 |
+| `npm run smoke` | API 冒烟，需要服务在跑且已 seed，见下方环境变量 |
 
 ## 环境变量
 
@@ -31,7 +31,10 @@
 | `MONGODB_URI` | ✔ | 形如 `mongodb+srv://user:pass@cluster/notice`；不写库名时默认 `notice` |
 | `AUTH_SECRET` | ✔ | next-auth JWT 签名密钥，用 `openssl rand -base64 32` 生成 |
 | `AUTH_URL` | 本地 ✔ | `http://localhost:3000`；Vercel 上可留空，由请求头推断 |
-| `ADMIN_INIT_PASSWORD` | 首次 seed ✔ | 初始化管理员密码，仅 `npm run seed` 使用，不参与运行时逻辑 |
+| `ADMIN_INIT_PASSWORD` | 首次 seed ✔ | 初始化管理员密码，缺省值见 `lib/shared/constants.ts`；仅 seed 使用，不参与运行时逻辑 |
+| `SMOKE_BASE_URL` | smoke 可选 | 默认 `http://127.0.0.1:3000` |
+| `SMOKE_ADMIN_USERNAME` | smoke 可选 | 默认 `admin` |
+| `SMOKE_ADMIN_PASSWORD` | smoke ✔ | 冒烟测试登录用的密码 |
 
 ```powershell
 # Windows PowerShell 生成密钥
@@ -46,6 +49,16 @@
 - 页面与组件不 import `lib/server/**`；前端取数一律走 `/api/**`，保证前后端分离边界。
 - 一个功能一个提交，标题 `feat: 一句话说明`，描述每行以 `- ` 开头且只写功能要点。
 - 页面验证、截图、交互回归使用 magpie-browser MCP；不写临时 Playwright 脚本（仓库自带 `npm run e2e` 属回归套件，不受此限）。
+
+## 首次运行
+
+```bash
+npm install
+npm run seed        # 自动读取根目录 .env.local（存在时）
+npm run dev
+```
+
+`seed` 会在 `notices` 为空时写入 8 篇样例文章和 2 个 base64 示例媒体，并创建 `settings/singleton`。初始管理员用户名 `admin`，密码取 `ADMIN_INIT_PASSWORD`，未设置时使用默认值；**首次登录后请到「设置 → 账号」修改**。
 
 ## 媒体存储
 

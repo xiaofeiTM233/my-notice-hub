@@ -706,3 +706,27 @@ npm i -D @types/sanitize-html tsx
 1. **Phase 1**：装依赖 + `.env.example` + 脚本 + 文档骨架 → 提交 → 停。
 2. **Phase 2**：四个模型 + `lib/media.ts` + DTO + seed（含默认密码）→ 提交 → 停。
 3. **Phase 3–7**：按 §8 推进，每个 Phase 结束停下等你验收。
+
+---
+
+## 14. 实施进度（已全部落地）
+
+| 阶段 | 状态 | 说明 |
+| :--- | :--- | :--- |
+| Phase 1 依赖安装 | ✅ | 依赖、`typecheck`/`seed`/`smoke` 脚本、开发文档 |
+| Phase 2 数据模型与媒体 | ✅ | 四个模型、`lib/media.ts` 六适配器、DTO、seed（默认密码见 `lib/shared/constants.ts`，可用 `ADMIN_INIT_PASSWORD` 覆盖） |
+| Phase 3 后端 API | ✅ | 统一 envelope、Zod 合约、next-auth + `proxy.ts`、全部端点、冒烟脚本 |
+| Phase 4 前端基座 | ✅ | 设计令牌、Provider、主题三态、外壳、取数 hooks |
+| Phase 5 访客站点 | ✅ | 三视图列表、筛选与 URL 同步、详情双通道渲染、目录、附件、上下篇 |
+| Phase 6 管理后台 | ✅ | 登录、文章列表/编辑、媒体库、导入向导（空注册表）、设置 |
+| Phase 7 收尾 | ✅ | 数据模型/API/前端规范文档、README、lint/typecheck/build 全绿 |
+
+### 实施中的偏差与处理
+
+1. **antd cssinjs 与 Cache Components 冲突**：`@ant-design/cssinjs` 在模块初始化调用 `Math.random()`，预渲染期被拦截。处理：`app/layout.tsx` 用 `<Suspense>` 包住 Provider，页面转为 Partial Prerender（列表/详情/编辑页为动态洞），首屏仍在服务端产出。
+2. **存储示例留档已删除**：按你的要求不再保留 `docs/reference/storage-legacy.md`，能力直接收敛进 `lib/media.ts`。
+3. **编辑页离开拦截**：只做 `beforeunload`，未做路由级拦截（Next App Router 无稳定路由事件），换取实现确定性。
+4. **媒体 HEAD**：为返回准确 `Content-Length` 会读取一次文件；大文件场景后续可改为只查元数据。
+5. **未加 `server-only` 到模型层**：seed/smoke 脚本用 tsx 直接引用模型，加了会因 `server-only` 抛错；边界改由目录约定与代码评审保证。
+6. **冒烟需真实环境**：`npm run smoke` 需要运行中的服务、已 seed 的数据库与 `SMOKE_ADMIN_PASSWORD`。
+7. **构建需 `AUTH_SECRET`**：Vercel 项目环境变量里配置一次即可。
