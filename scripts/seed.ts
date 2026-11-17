@@ -1,4 +1,5 @@
 // scripts/seed.ts
+import { deflateSync } from 'node:zlib'
 import mongoose from 'mongoose'
 import dbConnect from '../lib/db'
 import { Setting } from '../lib/server/models/setting'
@@ -12,8 +13,65 @@ import {
   UPLOAD_MAX_BYTES,
 } from '../lib/shared/constants'
 
-const PNG_BASE64 =
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8AAAwAB/wD/6X8kAAAAAElFTkSuQmCC'
+// 样例封面需要真实尺寸，纯色 1x1 占位图在卡片里只会显示成一块空白。
+function crc32(buffer: Buffer): number {
+  let crc = 0xffffffff
+  for (const byte of buffer) {
+    crc ^= byte
+    for (let i = 0; i < 8; i += 1) {
+      crc = crc & 1 ? (crc >>> 1) ^ 0xedb88320 : crc >>> 1
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0
+}
+
+function pngChunk(type: string, data: Buffer): Buffer {
+  const length = Buffer.alloc(4)
+  length.writeUInt32BE(data.length)
+  const typeBuffer = Buffer.from(type, 'ascii')
+  const crc = Buffer.alloc(4)
+  crc.writeUInt32BE(crc32(Buffer.concat([typeBuffer, data])))
+  return Buffer.concat([length, typeBuffer, data, crc])
+}
+
+function buildCoverPng(from: [number, number, number], to: [number, number, number]): string {
+  const width = 1280
+  const height = 720
+  const raw = Buffer.alloc((width * 3 + 1) * height)
+  let offset = 0
+  for (let y = 0; y < height; y += 1) {
+    raw[offset] = 0
+    offset += 1
+    for (let x = 0; x < width; x += 1) {
+      const ratio = (x / width) * 0.6 + (y / height) * 0.4
+      const distance = Math.hypot(x / width - 0.76, y / height - 0.16)
+      const glow = Math.max(0, 1 - distance / 0.62) ** 2
+      for (let channel = 0; channel < 3; channel += 1) {
+        const base = from[channel] + (to[channel] - from[channel]) * ratio
+        raw[offset] = Math.round(Math.min(255, base + glow * 30))
+        offset += 1
+      }
+    }
+  }
+
+  const header = Buffer.alloc(13)
+  header.writeUInt32BE(width, 0)
+  header.writeUInt32BE(height, 4)
+  header[8] = 8
+  header[9] = 2
+
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    pngChunk('IHDR', header),
+    pngChunk('IDAT', deflateSync(raw, { level: 9 })),
+    pngChunk('IEND', Buffer.alloc(0)),
+  ]).toString('base64')
+}
+
+const SAMPLE_COVERS = [
+  buildCoverPng([76, 110, 245], [112, 72, 232]),
+  buildCoverPng([20, 150, 160], [59, 91, 219]),
+]
 
 function deriveSummary(body: string): string {
   return body
@@ -152,15 +210,34 @@ async function seedSetting(): Promise<void> {
 }
 
 async function seedMedia(): Promise<string[]> {
-  const count = await Media.countDocuments()
-  if (count > 0) {
-    const ids = await Media.find({}, { _id: 1 }).limit(2).lean<{ _id: mongoose.Types.ObjectId }[]>()
-    return ids.map((doc) => String(doc._id))
+  const existing = await Media.find({}, { _id: 1, src: 1, name: 1 })
+    .limit(2)
+    .lean<{ _id: mongoose.Types.ObjectId; src: string; name: string }[]>()
+
+  if (existing.length > 0) {
+    // 旧样例封面是 1x1 占位图，重新执行 seed 时升级为渐变封面，只动样例自身的记录。
+    for (const [index, doc] of existing.entries()) {
+      if (!doc.name.startsWith('示例') || doc.src.length > 800) continue
+      await Media.updateOne({ _id: doc._id }, { $set: { src: SAMPLE_COVERS[index % SAMPLE_COVERS.length] } })
+    }
+    return existing.map((doc) => String(doc._id))
   }
 
   const docs = await Media.create([
-    { type: 'base64', src: PNG_BASE64, format: 'png', name: '示例封面', author: { name: '系统' } },
-    { type: 'base64', src: PNG_BASE64, format: 'png', name: '示例附件', author: { name: '系统' } },
+    {
+      type: 'base64',
+      src: SAMPLE_COVERS[0],
+      format: 'png',
+      name: '示例封面',
+      author: { name: '系统' },
+    },
+    {
+      type: 'base64',
+      src: SAMPLE_COVERS[1],
+      format: 'png',
+      name: '示例附件',
+      author: { name: '系统' },
+    },
   ])
 
   return docs.map((doc) => String(doc._id))

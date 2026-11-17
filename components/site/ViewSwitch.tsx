@@ -1,20 +1,33 @@
 // components/site/ViewSwitch.tsx
 'use client'
+import { AppstoreOutlined, BarsOutlined, PicCenterOutlined } from '@ant-design/icons'
 import { Segmented } from 'antd'
-import { LIST_VIEWS, LIST_VIEW_LABEL, type ListView } from '@/lib/shared/constants'
+import type { ListView } from '@/lib/shared/constants'
 
-interface ViewSwitchProps {
-  value: ListView
-  onChange: (view: ListView) => void
+const LABEL: Record<ListView, string> = {
+  card: '卡片',
+  masonry: '瀑布流',
+  list: '列表',
 }
 
-export function ViewSwitch({ value, onChange }: ViewSwitchProps) {
+export function ViewSwitch({
+  value,
+  onChange,
+}: {
+  value: ListView
+  onChange: (value: ListView) => void
+}) {
   return (
     <Segmented
       aria-label="切换列表视图"
+      size="small"
       value={value}
       onChange={(next) => onChange(next as ListView)}
-      options={LIST_VIEWS.map((item) => ({ value: item, label: LIST_VIEW_LABEL[item] }))}
+      options={[
+        { value: 'card', label: LABEL.card, icon: <AppstoreOutlined /> },
+        { value: 'masonry', label: LABEL.masonry, icon: <PicCenterOutlined /> },
+        { value: 'list', label: LABEL.list, icon: <BarsOutlined /> },
+      ]}
     />
   )
 }

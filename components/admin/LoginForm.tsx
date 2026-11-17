@@ -2,8 +2,8 @@
 'use client'
 import { LockOutlined, UserOutlined } from '@ant-design/icons'
 import { Alert, App, Button, Form, Input } from 'antd'
-import Image from 'next/image'
 import { signIn } from 'next-auth/react'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { SITE_NAME } from '@/lib/shared/constants'
@@ -50,8 +50,13 @@ export function LoginForm() {
     <div className="login-shell">
       <div className="login-card">
         <div className="login-brand">
-          <Image src="/vercel.svg" alt="" width={24} height={24} />
-          <span>{SITE_NAME}</span>
+          <span className="brand-mark" aria-hidden>
+            {SITE_NAME.slice(0, 1)}
+          </span>
+          <span className="brand-text">
+            <span className="brand-name">{SITE_NAME}</span>
+            <span className="brand-sub">Admin Console</span>
+          </span>
         </div>
         <p className="login-sub">管理后台，仅限管理员登录</p>
 
@@ -90,6 +95,9 @@ export function LoginForm() {
             登录
           </Button>
         </Form>
+        <div className="login-foot">
+          <Link href="/">返回站点首页</Link>
+        </div>
       </div>
     </div>
   )

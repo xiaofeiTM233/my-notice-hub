@@ -11,7 +11,6 @@ import {
   SettingOutlined,
 } from '@ant-design/icons'
 import { Avatar, Breadcrumb, Button, Drawer, Dropdown, Grid, Layout, Menu } from 'antd'
-import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
@@ -66,6 +65,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const menu = (
     <Menu
       mode="inline"
+      inlineCollapsed={collapsed && !isMobile}
       selectedKeys={[resolveSelectedKey(pathname)]}
       items={MENU_ITEMS}
       onClick={({ key }) => {
@@ -78,8 +78,15 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const sider = (
     <>
       <div className="admin-sider-brand">
-        <Image src="/vercel.svg" alt="" width={20} height={20} />
-        {collapsed && !isMobile ? null : <span>{SITE_NAME}</span>}
+        <span className="brand-mark" aria-hidden>
+          {SITE_NAME.slice(0, 1)}
+        </span>
+        {collapsed && !isMobile ? null : (
+          <span className="brand-text">
+            <span className="brand-name">{SITE_NAME}</span>
+            <span className="brand-sub">Admin</span>
+          </span>
+        )}
       </div>
       <div className="admin-sider-menu">{menu}</div>
       {isMobile ? null : (
@@ -91,7 +98,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
             onClick={() => setCollapsed(!collapsed)}
             aria-label={collapsed ? '展开侧栏' : '折叠侧栏'}
           />
-          <ThemeToggle />
         </div>
       )}
     </>
@@ -113,7 +119,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           />
           <Breadcrumb items={breadcrumbItems(pathname)} />
           <div className="admin-header-spacer" />
-          {isMobile ? <ThemeToggle /> : null}
+          <ThemeToggle />
           <Dropdown
             menu={{
               items: [

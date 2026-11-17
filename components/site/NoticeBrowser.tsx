@@ -1,7 +1,7 @@
 // components/site/NoticeBrowser.tsx
 'use client'
 import { SearchOutlined } from '@ant-design/icons'
-import { Button, Input, Skeleton } from 'antd'
+import { Button, Input } from 'antd'
 import { EmptyState } from '@/components/common/EmptyState'
 import { ErrorState } from '@/components/common/ErrorState'
 import { FilterPanel } from '@/components/site/FilterPanel'
@@ -17,7 +17,7 @@ import type { Paginated } from '@/lib/shared/contracts/common'
 import type { ChannelStat, NoticeSummaryDto, TagStat } from '@/lib/shared/types'
 
 export function NoticeBrowser() {
-  const { query, apply, reset } = useNoticeFilters()
+  const { query, apply, reset, filtered } = useNoticeFilters()
   const view = useUIStore((state) => state.noticeView)
   const setView = useUIStore((state) => state.setNoticeView)
 
@@ -29,78 +29,111 @@ export function NoticeBrowser() {
   )
 
   const items = data?.items ?? []
+  const total = data?.total ?? 0
+
+  const renderItems = () => {
+    if (view === 'list') {
+      return (
+        <div className="notice-rows">
+          {items.map((notice) => (
+            <NoticeListRow key={notice.id} notice={notice} />
+          ))}
+        </div>
+      )
+    }
+
+    if (view === 'masonry') {
+      return (
+        <div className="masonry">
+          {items.map((notice) => (
+            <NoticeCard key={notice.id} notice={notice} />
+          ))}
+        </div>
+      )
+    }
+
+    return (
+      <div className="notice-grid">
+        {items.map((notice) => (
+          <NoticeCard key={notice.id} notice={notice} />
+        ))}
+      </div>
+    )
+  }
 
   return (
-    <div className="site-container browse-layout">
-      <FilterPanel
-        query={query}
-        channels={channels ?? []}
-        tags={tags ?? []}
-        onChange={apply}
-        onReset={reset}
-      />
-
-      <section>
-        <div className="browse-toolbar">
-          <div>
-            <div className="browse-title">最新公告</div>
-            <div className="result-count">共 {data?.total ?? 0} 条</div>
-          </div>
-          <div className="row">
-            <Input.Search
-              key={query.q}
-              className="browse-search"
-              allowClear
-              defaultValue={query.q}
-              placeholder="搜索标题或摘要"
-              enterButton={<SearchOutlined />}
-              onSearch={(value) => apply({ q: value.trim() })}
-              aria-label="搜索公告"
-            />
-            <ViewSwitch value={view} onChange={setView} />
-          </div>
+    <div className="site-container">
+      <div className="browse-head">
+        <div>
+          <span className="hero-eyebrow">Notice Board</span>
+          <h1 className="browse-title">全部公告</h1>
+          <p className="browse-desc">
+            共 <strong>{total}</strong> 条 · 按频道、优先级与时间快速定位
+          </p>
         </div>
-
-        {error ? (
-          <ErrorState message={error.message} onRetry={refresh} />
-        ) : loading ? (
-          <div className="notice-grid">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="notice-card skeleton-card">
-                <div className="skeleton-block skeleton-cover" />
-                <div className="notice-card-body">
-                  <Skeleton active title paragraph={{ rows: 3 }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : items.length === 0 ? (
-          <EmptyState
-            title="没有匹配的公告"
-            description="换个关键词，或清空筛选条件再看看"
-            action={<Button onClick={reset}>重置筛选</Button>}
+        <div className="browse-toolbar">
+          <Input.Search
+            key={query.q}
+            className="browse-search"
+            placeholder="搜索标题或摘要"
+            allowClear
+            defaultValue={query.q}
+            prefix={<SearchOutlined />}
+            onSearch={(value) => apply({ q: value.trim() })}
           />
-        ) : view === 'list' ? (
-          <div className="notice-rows">
-            {items.map((notice) => (
-              <NoticeListRow key={notice.id} notice={notice} />
-            ))}
-          </div>
-        ) : (
-          <div className={view === 'masonry' ? 'masonry' : 'notice-grid'}>
-            {items.map((notice) => (
-              <NoticeCard key={notice.id} notice={notice} />
-            ))}
-          </div>
-        )}
+          <ViewSwitch value={view} onChange={setView} />
+        </div>
+      </div>
 
-        <PaginationBar
-          page={data?.page ?? query.page}
-          pageSize={data?.pageSize ?? query.pageSize}
-          total={data?.total ?? 0}
-          onChange={(page, pageSize) => apply({ page, pageSize })}
+      <div className="browse-layout">
+        <FilterPanel
+          query={query}
+          channels={channels ?? []}
+          tags={tags ?? []}
+          onChange={apply}
+          onReset={reset}
         />
-      </section>
+
+        <section aria-live="polite">
+          {error ? <ErrorState message={error.message} onRetry={refresh} /> : null}
+
+          {!error && loading ? (
+            <div className="notice-grid">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div key={index} className="skeleton-card skeleton-block" />
+              ))}
+            </div>
+          ) : null}
+
+          {!error && !loading && items.length === 0 ? (
+            <EmptyState
+              title="没有匹配的公告"
+              description={filtered ? '换个关键词，或清空筛选条件再试。' : '稍后再来看看。'}
+              action={
+                filtered ? (
+                  <Button size="small" onClick={reset}>
+                    清空筛选
+                  </Button>
+                ) : undefined
+              }
+            />
+          ) : null}
+
+          {!error && !loading && items.length > 0 ? renderItems() : null}
+
+          {!error && !loading ? (
+            <PaginationBar
+              page={query.page}
+              pageSize={query.pageSize}
+              total={total}
+              onChange={(page) => {
+                apply({ page })
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+            />
+          ) : null}
+        </section>
+      </div>
     </div>
   )
 }

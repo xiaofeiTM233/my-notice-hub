@@ -1,16 +1,16 @@
 // components/site/PaginationBar.tsx
 'use client'
 import { Pagination } from 'antd'
-import { MAX_PAGE_SIZE } from '@/lib/shared/constants'
+import { DEFAULT_PAGE_SIZE } from '@/lib/shared/constants'
 
 interface PaginationBarProps {
   page: number
-  pageSize: number
+  pageSize?: number
   total: number
-  onChange: (page: number, pageSize: number) => void
+  onChange: (page: number) => void
 }
 
-export function PaginationBar({ page, pageSize, total, onChange }: PaginationBarProps) {
+export function PaginationBar({ page, pageSize = DEFAULT_PAGE_SIZE, total, onChange }: PaginationBarProps) {
   if (total <= pageSize) return null
 
   return (
@@ -19,9 +19,8 @@ export function PaginationBar({ page, pageSize, total, onChange }: PaginationBar
         current={page}
         pageSize={pageSize}
         total={total}
-        showSizeChanger
-        pageSizeOptions={[12, 24, 36, 60].filter((size) => size <= MAX_PAGE_SIZE)}
-        showLessItems
+        showSizeChanger={false}
+        hideOnSinglePage
         onChange={onChange}
       />
     </div>

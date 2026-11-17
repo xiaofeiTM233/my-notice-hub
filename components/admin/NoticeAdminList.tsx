@@ -7,7 +7,7 @@ import {
   ImportOutlined,
   PlusOutlined,
 } from '@ant-design/icons'
-import { App, Button, Table, Tag, type TableColumnsType } from 'antd'
+import { App, Button, Grid, Table, Tag, type TableColumnsType } from 'antd'
 import Link from 'next/link'
 import { useState } from 'react'
 import { EmptyState } from '@/components/common/EmptyState'
@@ -26,6 +26,7 @@ import type { Paginated } from '@/lib/shared/contracts/common'
 import type { ChannelStat, NoticeSummaryDto, TagStat } from '@/lib/shared/types'
 
 export function NoticeAdminList() {
+  const screens = Grid.useBreakpoint()
   const { query, apply, reset } = useNoticeFilters()
   const { data: channels } = useApiQuery<ChannelStat[]>('/api/channels')
   const { data: tags } = useApiQuery<TagStat[]>('/api/tags', { limit: 60 })
@@ -97,6 +98,7 @@ export function NoticeAdminList() {
       title: '封面',
       dataIndex: 'cover',
       width: 72,
+      responsive: ['md'],
       render: (_value, record) => (
         <div className="table-cover">
           <MediaImage mediaId={record.cover} alt={record.title} fill sizes="56px" />
@@ -119,6 +121,7 @@ export function NoticeAdminList() {
       title: '频道',
       dataIndex: 'channel',
       width: 110,
+      responsive: ['lg'],
       render: (value: string) => <Tag variant="filled">{value}</Tag>,
     },
     {
@@ -136,6 +139,7 @@ export function NoticeAdminList() {
       title: '标签',
       dataIndex: 'tags',
       width: 180,
+      responsive: ['lg'],
       render: (value: string[]) =>
         value.length ? (
           <div className="tag-list">
@@ -153,14 +157,15 @@ export function NoticeAdminList() {
       title: '发布时间',
       dataIndex: 'timestamp',
       width: 160,
-      render: (value: number) => formatDate(value, true),
+      responsive: ['md'],
+      render: (value: number) => <span className="nowrap">{formatDate(value, true)}</span>,
     },
     {
       title: '操作',
       key: 'actions',
       width: 160,
       render: (_value, record) => (
-        <div className="row">
+        <div className="row actions">
           <Link href={`/admin/notices/${record.id}/edit`}>
             <Button size="small" type="text" icon={<EditOutlined />} aria-label="编辑" />
           </Link>
@@ -223,11 +228,12 @@ export function NoticeAdminList() {
       ) : null}
 
       <Table<NoticeSummaryDto>
+        size="small"
         rowKey="id"
         columns={columns}
         dataSource={data?.items ?? []}
         loading={loading}
-        scroll={{ x: 960 }}
+        scroll={screens.md ? { x: 960 } : undefined}
         rowSelection={{
           selectedRowKeys: selectedKeys,
           onChange: setSelectedKeys,

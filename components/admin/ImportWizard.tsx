@@ -145,8 +145,8 @@ export function ImportWizard() {
 
               {preview.invalidCount > 0 ? (
                 <Table<ImportInvalidDto>
-                  rowKey={(record) => `${record.index}-${record.path}`}
                   size="small"
+                  rowKey={(record) => `${record.index}-${record.path}`}
                   columns={INVALID_COLUMNS}
                   dataSource={preview.invalid}
                   pagination={{ pageSize: 10, showSizeChanger: false }}

@@ -10,6 +10,7 @@ export function ThemeToggle() {
 
   return (
     <Segmented
+      className="theme-toggle"
       aria-label="切换主题"
       size="small"
       value={mode}

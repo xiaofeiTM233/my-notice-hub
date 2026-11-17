@@ -27,7 +27,7 @@ export function MediaImage({
   if (!mediaId || failed) {
     return (
       <div className={className ? `${className} media-fallback` : 'media-fallback'} aria-hidden>
-        {(alt || '·').slice(0, 1)}
+        <span>{(alt.trim() || '·').slice(0, 1)}</span>
       </div>
     )
   }

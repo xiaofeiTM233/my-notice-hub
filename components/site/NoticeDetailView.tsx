@@ -13,7 +13,7 @@ import { MediaImage } from '@/components/common/MediaImage'
 import { ArticleToc } from '@/components/site/ArticleToc'
 import { ContentRenderer } from '@/components/editor/ContentRenderer'
 import { useApiQuery } from '@/hooks/useApiQuery'
-import { PRIORITY_COLOR, PRIORITY_LABEL } from '@/lib/shared/constants'
+import { PRIORITY_LABEL } from '@/lib/shared/constants'
 import { formatDate } from '@/lib/shared/format'
 import type { NoticeDetailResponse } from '@/lib/shared/types'
 
@@ -69,16 +69,14 @@ export function NoticeDetailView({ noticeId }: { noticeId: string }) {
             </Tag>
             <span>{formatDate(data.timestamp, true)}</span>
             {data.author?.name ? (
-              <span>
-                <span className="meta-dot" />
-                {data.author.name}
-              </span>
+              <>
+                <span className="meta-dot" aria-hidden />
+                <span>{data.author.name}</span>
+              </>
             ) : null}
+            <span className="meta-dot" aria-hidden />
             <span className="priority">
-              <span
-                className="priority-dot"
-                style={{ background: PRIORITY_COLOR[data.priority] }}
-              />
+              <span className={`priority-dot ${data.priority}`} aria-hidden />
               {PRIORITY_LABEL[data.priority]}
             </span>
             <Button type="text" size="small" icon={<CopyOutlined />} onClick={copyLink}>
@@ -88,7 +86,7 @@ export function NoticeDetailView({ noticeId }: { noticeId: string }) {
 
           {data.cover ? (
             <div className="detail-cover">
-              <MediaImage mediaId={data.cover} alt={data.title} fill sizes="760px" />
+              <MediaImage mediaId={data.cover} alt={data.title} fill sizes="800px" />
             </div>
           ) : null}
 
@@ -116,25 +114,28 @@ export function NoticeDetailView({ noticeId }: { noticeId: string }) {
           ) : null}
 
           {data.tags.length > 0 ? (
-            <div className="detail-tags">
-              {data.tags.map((tag) => (
-                <Tag key={tag} variant="filled">
-                  #{tag}
-                </Tag>
-              ))}
-            </div>
+            <section className="detail-section">
+              <h2 className="detail-section-title">标签</h2>
+              <div className="detail-tags">
+                {data.tags.map((tag) => (
+                  <Tag key={tag} variant="filled">
+                    #{tag}
+                  </Tag>
+                ))}
+              </div>
+            </section>
           ) : null}
 
           <div className="prev-next">
             {data.prev ? (
               <Link className="prev-next-item" href={`/notices/${data.prev.id}`}>
-                <span className="muted">上一篇</span>
+                <span>上一篇</span>
                 <span className="prev-next-title">{data.prev.title}</span>
               </Link>
             ) : null}
             {data.next ? (
-              <Link className="prev-next-item" href={`/notices/${data.next.id}`}>
-                <span className="muted">下一篇</span>
+              <Link className="prev-next-item next" href={`/notices/${data.next.id}`}>
+                <span>下一篇</span>
                 <span className="prev-next-title">{data.next.title}</span>
               </Link>
             ) : null}
