@@ -22,6 +22,9 @@
 | `npm run seed` | 初始化 `Setting`（管理员密码、存储配置）与样例文章、示例媒体；已存在则跳过 |
 | `npm run smoke` | API 冒烟，需要服务在跑且已 seed，见下方环境变量 |
 | `npm run admin:check -- <密码>` | 校验数据库连接、单例设置与管理员密码是否匹配 |
+| `npm run import:zmd-archive -- [--dry-run] [--dir <目录>] [--limit N] [--skip-existing]` | 导入 [endfield-archive-library](https://github.com/BiologyHazard/endfield-archive-library) 的 `bulletin/detail` 归档公告 |
+
+归档导入默认走 GitHub 的 `contents` 接口列目录、`raw.githubusercontent.com` 逐个下载（失败回退 jsDelivr）；`--dir` 可指向本地克隆的 `https/game-hub.hypergryph.com/bulletin/detail` 目录，避免网络请求。导入复用 `zmd` 适配器的字段映射与图片登记（频道 `zmd`，图转外链媒体），默认按 `extra.source + extra.cid` 覆盖已存在的公告，`--skip-existing` 可改成跳过；`--dry-run` 只解析不写库。
 
 ## 环境变量
 

@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "seed": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx scripts/seed.ts",
+    "import:zmd-archive": "node --conditions=react-server --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx scripts/import-zmd-archive.ts",
     "smoke": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx scripts/smoke-api.ts",
     "admin:check": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx scripts/check-admin.ts"
   },

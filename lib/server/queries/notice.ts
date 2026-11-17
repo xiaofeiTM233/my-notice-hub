@@ -194,7 +194,7 @@ export async function updateNotice(id: string, input: NoticeUpdateInput): Promis
     patch['content.summary'] = deriveSummary(input.body)
   }
 
-  const doc = await Notice.findByIdAndUpdate(id, { $set: patch }, { new: true }).lean<INotice | null>()
+  const doc = await Notice.findByIdAndUpdate(id, { $set: patch }, { returnDocument: 'after' }).lean<INotice | null>()
   if (!doc) throw notFound('文章不存在')
   return doc
 }
@@ -226,6 +226,8 @@ export async function findMediaReferences(mediaId: string): Promise<MediaReferen
         { 'content.cover': mediaId },
         { 'content.entities': mediaId },
         { 'content.author.avatar': mediaId },
+        // 正文图片同样算引用，mediaId 仅十六进制，可安全用作正则
+        { 'content.body': { $regex: mediaId } },
       ],
     },
     { 'content.title': 1 },

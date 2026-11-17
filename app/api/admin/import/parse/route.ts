@@ -2,10 +2,11 @@
 import type { NextRequest } from 'next/server'
 import dbConnect from '@/lib/db'
 import { withApi } from '@/lib/server/respond'
-import { readFormData, readFormFile } from '@/lib/server/params'
+import { readFormData } from '@/lib/server/params'
 import { requireAdmin } from '@/lib/server/guard'
 import { badRequest } from '@/lib/server/errors'
 import { getImportAdapter, importAdapters } from '@/lib/server/import/registry'
+import type { ImportSource } from '@/lib/server/import/registry'
 import { noticeInputSchema } from '@/lib/shared/contracts/notice'
 import { ImportJob } from '@/lib/server/models/import-job'
 import { UPLOAD_MAX_BYTES } from '@/lib/shared/constants'
@@ -27,13 +28,26 @@ export const POST = withApi(async (request: NextRequest) => {
   const adapter = getImportAdapter(adapterId)
   if (!adapter) throw badRequest(`未找到适配器：${adapterId}`)
 
-  const file = readFormFile(form)
-  if (file.size > UPLOAD_MAX_BYTES) {
+  // 远程适配器不需要文件，其余适配器仍要求上传
+  const upload = form.get('file')
+  const file = upload instanceof File && upload.size > 0 ? upload : null
+  if (!file && !adapter.remote) throw badRequest('缺少上传文件')
+  if (file && file.size > UPLOAD_MAX_BYTES) {
     throw badRequest(`导入文件超过上限 ${Math.floor(UPLOAD_MAX_BYTES / 1024 / 1024)} MB`)
   }
 
-  const buffer = Buffer.from(await file.arrayBuffer())
-  const raws = await adapter.parse({ filename: file.name, mime: file.type || 'application/octet-stream', buffer })
+  const source: ImportSource | undefined = file
+    ? {
+        filename: file.name,
+        mime: file.type || 'application/octet-stream',
+        buffer: Buffer.from(await file.arrayBuffer()),
+      }
+    : undefined
+  const filename = source?.filename ?? `${adapter.id}:remote`
+  const mime = source?.mime ?? 'application/json'
+  const size = source?.buffer.byteLength ?? 0
+
+  const raws = await adapter.parse(source)
 
   const payload: unknown[] = []
   const invalid: { index: number; path: string; message: string }[] = []
@@ -57,9 +71,9 @@ export const POST = withApi(async (request: NextRequest) => {
   const now = new Date()
   const job = await ImportJob.create({
     adapter: adapter.id,
-    filename: file.name,
-    mime: file.type || 'application/octet-stream',
-    size: file.size,
+    filename,
+    mime,
+    size,
     status: 'parsed',
     total: raws.length,
     validCount: payload.length,
@@ -73,7 +87,7 @@ export const POST = withApi(async (request: NextRequest) => {
   return {
     jobId: String(job._id),
     adapter: adapter.id,
-    filename: file.name,
+    filename,
     total: raws.length,
     validCount: payload.length,
     invalidCount: raws.length - payload.length,

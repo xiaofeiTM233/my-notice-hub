@@ -85,6 +85,8 @@ export interface ImportAdapterInfo {
   id: string
   label: string
   accepts: string[]
+  remote: boolean
+  description?: string
 }
 
 export interface ImportInvalidDto {

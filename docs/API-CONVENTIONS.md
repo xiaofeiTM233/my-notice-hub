@@ -79,8 +79,8 @@
 | POST | `/api/admin/media` | `multipart/form-data`，字段 `file`、可选 `author` |
 | PATCH | `/api/admin/media/{id}` | `{ name?, author? }` |
 | DELETE | `/api/admin/media/{id}` | `?force=1` 忽略引用检查 |
-| GET | `/api/admin/import/adapters` | 已注册适配器，本期为 `[]` |
-| POST | `/api/admin/import/parse` | `multipart/form-data`：`adapter` + `file` → 预览 |
+| GET | `/api/admin/import/adapters` | 已注册适配器：`zmd`（聚合接口）、`zmd-web`（官网公告） |
+| POST | `/api/admin/import/parse` | `multipart/form-data`：`adapter` + `file` → 预览；远程适配器可省略 `file` |
 | POST | `/api/admin/import/commit` | `{ jobId, channel?, duplicate: 'skip' \| 'overwrite' }` |
 | GET | `/api/admin/settings` | 脱敏后的设置 |
 | PATCH | `/api/admin/settings` | `{ admin?: { username }, media?: { type, maxUploadSize, allowedFormats, credentials } }` |
@@ -106,6 +106,22 @@
 ```
 
 `timestamp` 省略时取服务器当前时间；`summary` 为空时保存阶段自动派生。
+
+### 终末地公告导入（adapter=zmd）
+
+- **取数**：不传文件时实时请求 `https://game-hub.hypergryph.com/bulletin/v2/aggregate?code=endfield_5SD9TN&type={0|1|2}&hideDetail=0`，三个频道并发拉取后合并；接口业务码非 0 或请求失败时返回 502。
+- **离线导入**：也接受 `/bulletin/v2/aggregate` 的 JSON 响应导出，支持单条响应、多条响应数组、`data.list` 或公告条目数组；带 `cid` 的条目按 cid 去重，优先保留含 `data.html` 的版本。
+- **映射**：`channel` 固定 `zmd`，`author.name` 固定 `终末地·游戏`，`timestamp` 取 `startAt`，`focus=1` 记为 `high`。
+- **正文**：`rich_text` 取 `data.html`；`picture` 用 `data.url` 拼图片、`data.link` 拼“查看活动详情”外链。
+- **附加**：`header` 与标题不同时记为摘要，`tab` 转成标签（活动公告/资讯速报/游戏公告/云端），`extra` 保留 `cid / type / tab / displayType / linkType`；导入时带 `extra.source + extra.cid` 的文章按来源标识判重。
+- **图片**：导入预览阶段不处理图片；确认导入时把列表 `cover` 与正文图片登记为外链媒体（`type: url`），正文改写为 `/api/media/{id}`，图片公告的配图额外作为封面。同地址重复导入按 `src` 复用，不反复新建；单张登记失败不阻断导入。
+- **历史归档**：`npm run import:zmd-archive` 直接读 [endfield-archive-library](https://github.com/BiologyHazard/endfield-archive-library) 的 `bulletin/detail`，复用本适配器的映射与图片登记，默认覆盖同 `cid` 条目。
+
+### 终末地官网公告导入（adapter=zmd-web）
+
+- **取数**：列表 `https://web-news.hypergryph.com/api/bulletin?lang=zh-cn&code=endfield_web&page=n&pageSize=20` 按 `total` 翻页，再逐条请求 `/api/bulletin/{cid}?lang=zh-cn&code=endfield_web` 取正文 HTML（并发 6，单条失败只丢正文）。
+- **映射**：`channel` 固定 `zmd`，`tags` 固定 `终末地·官网`，`author.name` 固定 `终末地·游戏`，`timestamp` 取 `displayTime`，置顶 `sticky` 记 `high`，`summary` 取 `brief`，`extra` 保留 `cid / tab / sticky`。
+- **图片**：列表 `cover` 与正文图片同样登记为外链媒体；封面图同时出现在正文时从正文移除，避免详情页重复。
 
 ## curl 示例
 

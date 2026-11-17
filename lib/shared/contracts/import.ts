@@ -16,6 +16,8 @@ export const importAdapterSchema = z.object({
   id: z.string(),
   label: z.string(),
   accepts: z.array(z.string()),
+  remote: z.boolean(),
+  description: z.string().optional(),
 })
 
 export type ImportCommitInput = z.infer<typeof importCommitSchema>

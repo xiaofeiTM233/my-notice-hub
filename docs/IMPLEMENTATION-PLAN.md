@@ -9,7 +9,7 @@
 - **形态**：单仓库、单 Next 应用，**严格前后端分离**。后端只有 `app/api/**/route.ts`；页面全是客户端组件，通过统一 fetch 客户端调自己的 API；页面层不 import 任何 Mongoose 模型。
 - **视觉**：Ant Design 6（`zh_CN`）+ Tailwind 4 仅做布局工具类，自建设计令牌，明暗双主题。品牌与标题写死，无页脚，图标沿用 `public/vercel.svg`。
 - **媒体**：六种存储（base64 / url / r2 / vercel / webdav / edgeone）全部收敛在**单个** `lib/media.ts`；对外只有 `/api/media/{id}`，任何响应体都不出现原始 `src`。
-- **导入**：适配器接口 + 注册表 + 三步向导全部就绪，注册表本期为空，导入页显示空态与接入说明。
+- **导入**：适配器接口 + 注册表 + 三步向导全部就绪，已接入 `zmd`（聚合接口）与 `zmd-web`（官网公告）适配器，均支持实时拉取。
 - **数据**：你给的 2 个模型（通知 / 媒体）+ `Setting`（`_id: "singleton"`）+ `ImportJob`（导入暂存）。**不建日志集合、不做互动写入、不做 SEO**。
 - **部署**：Vercel。上传上限 4 MB（平台请求体限制），base64 单文件 512 KiB，seed 在本地对 Atlas 跑一次。
 
@@ -189,7 +189,7 @@ lib/
     rate-limit.ts                登录与上传的内存限流
     auth-password.ts             scrypt 哈希与校验（timingSafeEqual）
     queries/notice.ts            多条件查询与聚合
-    import/registry.ts           适配器注册表（本期为空）+ 接口
+    import/registry.ts           适配器注册表（zmd）+ 接口
   client/
     api.ts                       fetch 封装、ApiError
     stores/ui.ts                 Zustand：主题、侧栏折叠、列表视图
@@ -348,8 +348,8 @@ public/                          vercel.svg（Logo/图标）、file.svg（空态
 | POST | `/api/admin/media` | 管理 | multipart 单文件上传 |
 | PATCH | `/api/admin/media/{id}` | 管理 | 重命名 / 作者 |
 | DELETE | `/api/admin/media/{id}` | 管理 | 删除，`?force=1` 忽略引用 |
-| GET | `/api/admin/import/adapters` | 管理 | 已注册适配器（本期空数组） |
-| POST | `/api/admin/import/parse` | 管理 | 上传 + 解析 + 校验 → ImportJob 预览 |
+| GET | `/api/admin/import/adapters` | 管理 | 已注册适配器（zmd） |
+| POST | `/api/admin/import/parse` | 管理 | 上传或远程拉取 + 解析 + 校验 → ImportJob 预览 |
 | POST | `/api/admin/import/commit` | 管理 | 按 jobId 写入 + 结果报告 |
 | GET/PATCH | `/api/admin/settings` | 管理 | 读（脱敏）/ 改 |
 | POST | `/api/admin/settings/password` | 管理 | 改密码 |

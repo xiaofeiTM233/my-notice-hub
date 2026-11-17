@@ -49,7 +49,7 @@
 
 - 排序用 `_id` 倒序（ObjectId 含时间），不加 `createdAt`。
 - 文件大小只在**上传响应**中返回，不落库。
-- 删除前用 `content.cover / content.entities / content.author.avatar` 反查引用，命中返回 409 与引用列表，`?force=1` 可强制删除。
+- 删除前用 `content.cover / content.entities / content.author.avatar / content.body` 反查引用，命中返回 409 与引用列表，`?force=1` 可强制删除。
 
 ## settings
 

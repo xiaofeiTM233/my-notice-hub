@@ -23,7 +23,7 @@ export const PATCH = withApi(
     if (input.name !== undefined) patch.name = input.name
     if (input.author !== undefined) patch.author = input.author
 
-    const doc = await Media.findByIdAndUpdate(mediaId, { $set: patch }, { new: true }).lean<IMedia | null>()
+    const doc = await Media.findByIdAndUpdate(mediaId, { $set: patch }, { returnDocument: 'after' }).lean<IMedia | null>()
     if (!doc) throw notFound('媒体不存在')
     return toMediaDto(doc)
   },

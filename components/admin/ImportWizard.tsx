@@ -35,15 +35,16 @@ export function ImportWizard() {
   const { data: adapters, loading } = useApiQuery<ImportAdapterInfo[]>(
     '/api/admin/import/adapters',
   )
+  const selected = (adapters ?? []).find((item) => item.id === adapterId)
 
   const parse = async () => {
-    if (!adapterId || !file) {
-      message.warning('请选择适配器与文件')
+    if (!adapterId || (!selected?.remote && !file)) {
+      message.warning(selected?.remote ? '请选择适配器' : '请选择适配器与文件')
       return
     }
     const form = new FormData()
     form.append('adapter', adapterId)
-    form.append('file', file)
+    if (file) form.append('file', file)
 
     setBusy(true)
     try {
@@ -87,7 +88,7 @@ export function ImportWizard() {
 
       <Steps
         current={step}
-        items={[{ title: '选择文件' }, { title: '校验预览' }, { title: '执行结果' }]}
+        items={[{ title: '选择数据源' }, { title: '校验预览' }, { title: '执行结果' }]}
       />
 
       {loading ? null : (adapters ?? []).length === 0 ? (
@@ -110,23 +111,34 @@ export function ImportWizard() {
                 onChange={setAdapterId}
                 options={(adapters ?? []).map((item) => ({
                   value: item.id,
-                  label: `${item.label}（${item.accepts.join(' / ')}）`,
+                  label: item.remote
+                    ? item.label
+                    : `${item.label}（${item.accepts.join(' / ')}）`,
                 }))}
               />
-              <Upload.Dragger
-                maxCount={1}
-                beforeUpload={(next) => {
-                  setFile(next as File)
-                  return false
-                }}
-                onRemove={() => setFile(null)}
-              >
-                <p className="ant-upload-drag-icon">
-                  <InboxOutlined />
-                </p>
-                <p className="ant-upload-text">选择要导入的文件</p>
-                <p className="ant-upload-hint">解析结果会先进入预览，不会直接写入数据库。</p>
-              </Upload.Dragger>
+              {selected?.remote ? (
+                <Alert
+                  type="info"
+                  showIcon
+                  title="实时拉取"
+                  description={selected.description ?? '该适配器会直接请求来源接口，无需上传文件'}
+                />
+              ) : (
+                <Upload.Dragger
+                  maxCount={1}
+                  beforeUpload={(next) => {
+                    setFile(next as File)
+                    return false
+                  }}
+                  onRemove={() => setFile(null)}
+                >
+                  <p className="ant-upload-drag-icon">
+                    <InboxOutlined />
+                  </p>
+                  <p className="ant-upload-text">选择要导入的文件</p>
+                  <p className="ant-upload-hint">解析结果会先进入预览，不会直接写入数据库。</p>
+                </Upload.Dragger>
+              )}
               <div className="row">
                 <Button type="primary" loading={busy} onClick={parse}>
                   解析并预览
@@ -166,10 +178,13 @@ export function ImportWizard() {
                   value={duplicate}
                   onChange={(value) => setDuplicate(value as 'skip' | 'overwrite')}
                   options={[
-                    { value: 'skip', label: '同标题同时间去重：跳过' },
-                    { value: 'overwrite', label: '同标题同时间去重：覆盖' },
+                    { value: 'skip', label: '重复：跳过' },
+                    { value: 'overwrite', label: '重复：覆盖' },
                   ]}
                 />
+                <div className="muted">
+                  带来源标识的文章按来源去重，其余按同标题同时间判重。
+                </div>
               </div>
 
               <details>

@@ -231,7 +231,7 @@ function SettingsContent({ data, refresh }: { data: SettingDto; refresh: () => v
             step={0.1}
             value={maxMB}
             onChange={(value) => setMaxMB(typeof value === 'number' ? value : 4)}
-            addonAfter="MB"
+            suffix="MB"
           />
           <span className="muted">平台请求体上限约 4 MB，Base64 类型另有 512 KB 限制。</span>
         </div>

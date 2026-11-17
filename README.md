@@ -46,6 +46,7 @@ ADMIN_INIT_PASSWORD=...    # 仅 seed 使用，可省略
 | `npm run typecheck` | TypeScript 检查 |
 | `npm run seed` | 初始化设置与样例数据，幂等 |
 | `npm run smoke` | API 冒烟（需服务在跑且已 seed） |
+| `npm run import:zmd-archive` | 从 GitHub 归档库导入终末地游戏内公告，详见 `docs/DEVELOPMENT.md` |
 
 ## 目录
 
@@ -63,7 +64,7 @@ lib/
   media.ts       六种存储适配器（单文件）
 proxy.ts         会话门（Next 16 的 proxy）
 auth.ts          next-auth 配置
-scripts/         seed 与冒烟测试
+scripts/         seed、冒烟与归档导入
 docs/            计划、数据模型、API、前端、开发部署
 ```
 
