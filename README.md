@@ -24,7 +24,7 @@ npm run seed     # 首次：初始化设置与样例数据（读取 .env.local�
 npm run dev      # http://localhost:3000
 ```
 
-需要 `.env.local`（已被 Git 忽略）：
+需要 `.env.local` 或 `.env`（已被 Git 忽略，`seed` 等脚本也会读取）：
 
 ```
 MONGODB_URI=mongodb+srv://...

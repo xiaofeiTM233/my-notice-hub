@@ -18,6 +18,9 @@ const PNG_BASE64 =
 function deriveSummary(body: string): string {
   return body
     .replace(/<[^>]*>/g, ' ')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/[#>*`_~|]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 120)

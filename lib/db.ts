@@ -36,7 +36,7 @@ global.mongooseCache = cached
 async function dbConnect(): Promise<typeof mongoose> {
   const uri = process.env.MONGODB_URI
   if (!uri) {
-    throw new Error('请在 .env 文件中定义 MONGODB_URI 环境变量')
+    throw new Error('请在 .env 或 .env.local 中定义 MONGODB_URI 环境变量')
   }
 
   if (cached.conn) {

@@ -21,10 +21,11 @@
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run seed` | 初始化 `Setting`（管理员密码、存储配置）与样例文章、示例媒体；已存在则跳过 |
 | `npm run smoke` | API 冒烟，需要服务在跑且已 seed，见下方环境变量 |
+| `npm run admin:check -- <密码>` | 校验数据库连接、单例设置与管理员密码是否匹配 |
 
 ## 环境变量
 
-在仓库根创建 `.env.local`（已被 `.gitignore` 的 `.env*` 忽略，不要提交）。
+在仓库根创建 `.env.local` 或 `.env`（两者都被 `.gitignore` 的 `.env*` 忽略，不要提交；同时存在时 `.env.local` 优先）。`next dev/build` 会自动读取；`seed` / `smoke` / `admin:check` 由 npm 脚本里的 Node 原生 `--env-file-if-exists` 参数注入，脚本内只读 `process.env`。
 
 | 变量 | 必填 | 说明 |
 | :--- | :--- | :--- |
@@ -82,6 +83,7 @@ npm run dev
 | :--- | :--- |
 | `请在 .env 文件中定义 MONGODB_URI` | 根目录缺 `.env.local` 或变量名为空 |
 | 登录后立刻 401 | `AUTH_SECRET` 变更过，或 `Setting.admin.sessionVersion` 被改密递增 |
+| 登录提示用户名或密码不正确 | 先跑 `npm run admin:check -- <密码>`：库连不上、未 seed、密码不匹配会被逐个指出；连续失败 5 次会触发 10 分钟限流，重启服务可立即清除 |
 | 首屏 antd 组件无样式 | 确认 `app/layout.tsx` 内 `AntdRegistry` 包裹在 `ConfigProvider` 外层 |
 | 构建报 `useSearchParams` 需 Suspense | 读取 URL 参数的客户端子树必须包 `<Suspense>` |
 | 媒体上传 413 | 超过 4 MiB 或平台请求体上限，改用 r2/vercel/webdav/edgeone |

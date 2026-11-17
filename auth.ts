@@ -35,13 +35,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const { username, password } = parsed.data
         const limitKey = `login:${username.toLowerCase()}`
         if (!rateLimit(limitKey, LOGIN_RATE_LIMIT, LOGIN_RATE_WINDOW_MS)) {
+          console.warn('[auth] 登录尝试过于频繁，已触发限流')
           throw new Error('登录尝试过于频繁，请稍后再试')
         }
 
-        const setting = await getSetting().catch(() => null)
-        if (!setting) return null
-        if (username !== setting.admin.username) return null
+        const setting = await getSetting().catch((error: unknown) => {
+          console.warn('[auth] 读取站点设置失败：', error instanceof Error ? error.message : error)
+          return null
+        })
+        if (!setting) {
+          console.warn('[auth] 站点设置不存在，先执行 npm run seed')
+          return null
+        }
+        if (username !== setting.admin.username) {
+          console.warn(`[auth] 用户名不存在：${username}`)
+          return null
+        }
         if (!verifyPassword(password, setting.admin.passwordHash, setting.admin.passwordSalt)) {
+          console.warn('[auth] 密码校验失败')
           return null
         }
 
