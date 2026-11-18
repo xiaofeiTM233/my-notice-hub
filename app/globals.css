@@ -68,6 +68,11 @@ html {
   color-scheme: dark;
 }
 
+/* cookie 缺失时首帧先自定底色，遮掉尚未按新主题重算的 antd 控件。 */
+.theme-pending body {
+  visibility: hidden;
+}
+
 body {
   min-height: 100%;
   margin: 0;
