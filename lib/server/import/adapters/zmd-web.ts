@@ -113,7 +113,7 @@ function toNoticeInput(item: Record<string, unknown>, html: string): Record<stri
   const cover = toText(item.cover)
   const cid = toText(item.cid)
   const tab = toText(item.tab)
-  // sticky 即官网列表置顶，对应后台高优先级
+  // sticky 即官网列表置顶，只记录到 extra，优先级统一普通
   const sticky = item.sticky === true
 
   const extra: Record<string, unknown> = { source: 'zmd-web' }
@@ -123,7 +123,7 @@ function toNoticeInput(item: Record<string, unknown>, html: string): Record<stri
 
   const notice: Record<string, unknown> = {
     channel: CHANNEL,
-    priority: sticky ? 'high' : 'normal',
+    priority: 'normal',
     title,
     author: { name: AUTHOR_NAME },
     tags: [TAG],

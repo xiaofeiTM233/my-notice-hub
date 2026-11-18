@@ -119,8 +119,8 @@ function toNoticeInput(item: Record<string, unknown>): Record<string, unknown> {
 
   const notice: Record<string, unknown> = {
     channel: CHANNEL,
-    // 接口的 focus 即焦点推荐位，对应后台的高优先级。
-    priority: toInt(item.focus) === 1 ? 'high' : 'normal',
+    // 导入内容统一普通优先级，接口的 focus 焦点位只记录在 extra 里
+    priority: 'normal',
     title,
     author: { name: AUTHOR_NAME },
     tags: tabTag ? [tabTag] : [],
@@ -154,6 +154,8 @@ export const zmdImportAdapter: ImportAdapter = {
       author: { name: AUTHOR_NAME },
       warningLabel: '[import:zmd]',
       coverFromBody: (notice) => notice.extra?.displayType === 'picture',
+      // 富文本公告接口不给封面，用正文首图补
+      coverFromFirstImage: (notice) => notice.extra?.displayType === 'rich_text',
     })
   },
 }

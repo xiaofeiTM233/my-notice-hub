@@ -6,7 +6,7 @@ import { readFormData, readFormFile } from '@/lib/server/params'
 import { requireAdmin } from '@/lib/server/guard'
 import { badRequest } from '@/lib/server/errors'
 import { mediaQuerySchema } from '@/lib/shared/contracts/media'
-import { formatFromFilename, saveMedia } from '@/lib/media'
+import { formatFromFilename, hashBuffer, saveMedia } from '@/lib/media'
 import { Media, type IMedia } from '@/lib/server/models/media'
 import { toMediaDto } from '@/lib/server/dto'
 import { UPLOAD_MAX_BYTES } from '@/lib/shared/constants'
@@ -74,5 +74,6 @@ export const POST = withApi(async (request: NextRequest) => {
     author: typeof authorName === 'string' && authorName.trim() ? { name: authorName.trim() } : undefined,
   })
 
-  return toMediaDto(media, buffer.length)
+  // 命中去重时返回已有媒体，前端提示“已存在同一文件”
+  return { ...toMediaDto(media, buffer.length), deduped: media.hash === hashBuffer(buffer) }
 })

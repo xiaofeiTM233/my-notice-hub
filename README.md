@@ -48,6 +48,7 @@ ADMIN_INIT_PASSWORD=...    # 仅 seed 使用，可省略
 | `npm run smoke` | API 冒烟（需服务在跑且已 seed） |
 | `npm run import:zmd-archive` | 从 GitHub 归档库导入终末地游戏内公告，详见 `docs/DEVELOPMENT.md` |
 | `npm run import:gamekee-ba` | 导入 GameKee 蔚蓝档案活动，默认全量 999 条 |
+| `npm run dedupe:media` | 按内容哈希合并重复媒体并改写引用 |
 
 ## 目录
 

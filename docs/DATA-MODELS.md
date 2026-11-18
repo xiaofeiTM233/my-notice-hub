@@ -45,8 +45,9 @@
 | `name` | string | ✘ | 展示名 |
 | `author` | object | ✘ | `{ name?, avatar? }` |
 | `referer` | string | ✘ | 外链媒体经 `/api/media/{id}` 代理时附带的来源页，供校验 referer 的图床使用 |
+| `hash` | string | ✘ | 内容指纹（SHA-256）：上传按字节、导入按图片字节计算，同一内容不同地址也复用同一条 |
 
-索引：`type + _id`。
+索引：`type + _id`，`hash`（sparse）。
 
 - 排序用 `_id` 倒序（ObjectId 含时间），不加 `createdAt`。
 - 文件大小只在**上传响应**中返回，不落库。

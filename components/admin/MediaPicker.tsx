@@ -43,8 +43,12 @@ export function MediaPicker({ open, multiple, onCancel, onConfirm }: MediaPicker
     const form = new FormData()
     form.append('file', file)
     try {
-      const media = await apiFetch<MediaDto>('/api/admin/media', { method: 'POST', body: form })
-      message.success('上传成功')
+      const media = await apiFetch<MediaDto & { deduped?: boolean }>('/api/admin/media', {
+        method: 'POST',
+        body: form,
+      })
+      // 内容相同时后端直接复用已有媒体，提示避免误以为重复上传成功
+      message.success(media.deduped ? '已存在相同文件，复用已有媒体' : '上传成功')
       refresh()
       if (!multiple) onConfirm([media])
     } catch (error) {

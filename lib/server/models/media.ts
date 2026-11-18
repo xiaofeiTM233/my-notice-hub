@@ -12,6 +12,8 @@ export interface IMedia {
   author?: NoticeAuthor
   // 外链媒体代理时附带的来源页，部分图床会校验
   referer?: string
+  // 内容指纹：上传时按字节、导入时按来源地址计算，用于跳过重复媒体
+  hash?: string
 }
 
 const authorSchema = new Schema<NoticeAuthor>(
@@ -30,11 +32,13 @@ const mediaSchema = new Schema<IMedia>(
     name: { type: String, trim: true },
     author: { type: authorSchema, default: undefined },
     referer: { type: String, trim: true, default: undefined },
+    hash: { type: String, trim: true, default: undefined },
   },
   { versionKey: false },
 )
 
 mediaSchema.index({ type: 1, _id: -1 })
+mediaSchema.index({ hash: 1 }, { sparse: true })
 
 export const Media: Model<IMedia> =
   (models.Media as Model<IMedia> | undefined) ?? model<IMedia>('Media', mediaSchema)

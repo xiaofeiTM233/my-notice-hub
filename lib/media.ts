@@ -1,6 +1,6 @@
 // lib/media.ts
 import 'server-only'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { lookup } from 'node:dns/promises'
 import { isIP } from 'node:net'
 import { BASE64_MAX_BYTES, type MediaType } from '@/lib/shared/constants'
@@ -260,6 +260,27 @@ export interface SaveMediaInput {
   buffer: Buffer
   format: string
   author?: { name?: string; avatar?: string }
+  // 复用已存在的同内容媒体时返回 true，调用方据此跳过重复写入
+  dedupe?: boolean
+}
+
+export function hashBuffer(buffer: Buffer): string {
+  return createHash('sha256').update(buffer).digest('hex')
+}
+
+// 返回已存在的同内容媒体，避免同一张图重复占用存储
+export async function findMediaByHash(hash: string): Promise<IMedia | null> {
+  await dbConnect()
+  return Media.findOne({ hash }, { _id: 1, type: 1, src: 1, format: 1, name: 1, author: 1, hash: 1 }).lean<IMedia | null>()
+}
+
+// 下载远端文件并计算内容哈希，用于识别同一张图的不同地址
+export async function fetchRemoteHash(
+  source: string,
+  referer?: string,
+): Promise<{ hash: string; size: number }> {
+  const { buffer } = await fetchBuffer(source, referer)
+  return { hash: hashBuffer(buffer), size: buffer.length }
 }
 
 export async function saveMedia(input: SaveMediaInput): Promise<IMedia> {
@@ -279,6 +300,13 @@ export async function saveMedia(input: SaveMediaInput): Promise<IMedia> {
   }
 
   await dbConnect()
+  const hash = hashBuffer(input.buffer)
+  // 上传同字节文件直接复用已有媒体，不重复占存储
+  if (input.dedupe !== false) {
+    const existing = await Media.findOne({ hash }).lean<IMedia | null>()
+    if (existing) return existing
+  }
+
   const adapter = await createAdapter(config)
   const result = await adapter.save(input.name, input.buffer, format)
   const doc = await Media.create({
@@ -287,6 +315,7 @@ export async function saveMedia(input: SaveMediaInput): Promise<IMedia> {
     format,
     name: input.name,
     author: input.author,
+    hash,
   })
   return doc
 }

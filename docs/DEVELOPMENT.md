@@ -24,6 +24,7 @@
 | `npm run admin:check -- <密码>` | 校验数据库连接、单例设置与管理员密码是否匹配 |
 | `npm run import:zmd-archive -- [--dry-run] [--dir <目录>] [--limit N] [--skip-existing]` | 导入 [endfield-archive-library](https://github.com/BiologyHazard/endfield-archive-library) 的 `bulletin/detail` 归档公告 |
 | `npm run import:gamekee-ba -- [--limit N] [--dry-run] [--skip-existing]` | 导入 GameKee 蔚蓝档案活动列表（频道 `ba`），默认按页翻完全部 999 条 |
+| `npm run dedupe:media -- [--dry-run] [--limit N]` | 按内容哈希合并重复媒体，并把文章里被合并媒体的引用改指向保留项 |
 
 归档导入默认走 GitHub 的 `contents` 接口列目录、`raw.githubusercontent.com` 逐个下载（失败回退 jsDelivr）；`--dir` 可指向本地克隆的 `https/game-hub.hypergryph.com/bulletin/detail` 目录，避免网络请求。导入复用 `zmd` 适配器的字段映射与图片登记（频道 `zmd`，图转外链媒体），默认按 `extra.source + extra.cid` 覆盖已存在的公告，`--skip-existing` 可改成跳过；`--dry-run` 只解析不写库。
 
