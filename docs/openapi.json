@@ -1,0 +1,3894 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "通知中心 API",
+    "version": "0.1.0",
+    "summary": "通知公告聚合站的公开与后台接口",
+    "description": "所有接口由 `lib/server/respond.ts` 的 `withApi` 包裹，返回统一 envelope：成功为 `{ ok: true, data, meta }`，失败为 `{ ok: false, error, meta }`。响应头固定带 `x-request-id`。列表查询参数中的 `channel`、`priority`、`tag` 可重复传参表示多选。时间字段统一为 Unix 秒整数。",
+    "license": {
+      "name": "Private"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "本地开发（npm run dev）"
+    }
+  ],
+  "tags": [
+    {
+      "name": "通知",
+      "description": "公开的文章列表与详情"
+    },
+    {
+      "name": "频道与标签",
+      "description": "列表页筛选项的聚合统计"
+    },
+    {
+      "name": "媒体",
+      "description": "媒体字节流读取，公开可访问"
+    },
+    {
+      "name": "后台-通知",
+      "description": "文章增删改查，需管理员登录"
+    },
+    {
+      "name": "后台-媒体",
+      "description": "媒体上传与维护，需管理员登录"
+    },
+    {
+      "name": "后台-导入",
+      "description": "从外部来源解析并批量导入文章，需管理员登录"
+    },
+    {
+      "name": "后台-设置",
+      "description": "站点设置、改密与存储连通性测试，需管理员登录"
+    },
+    {
+      "name": "认证",
+      "description": "Auth.js 会话接口"
+    },
+    {
+      "name": "MCP",
+      "description": "Model Context Protocol 端点，供 AI 客户端读写站点数据"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "authjs.session-token",
+        "description": "Auth.js JWT 会话 Cookie。通过 `POST /api/auth/callback/credentials` 登录后由服务端下发，有效期 12 小时。HTTPS 环境下 Cookie 名带 `__Secure-` 前缀。"
+      }
+    },
+    "parameters": {
+      "NoticeId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "文章 ID，24 位十六进制 ObjectId",
+        "schema": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{24}$"
+        },
+        "example": "65f1c2a9b3d4e5f6a7b8c9d0"
+      },
+      "MediaId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "媒体 ID，24 位十六进制 ObjectId",
+        "schema": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{24}$"
+        },
+        "example": "65f1c2a9b3d4e5f6a7b8c9d1"
+      }
+    },
+    "headers": {
+      "XRequestId": {
+        "description": "本次请求的唯一标识，排错时与 Vercel 日志对照",
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "未登录、会话过期或改密后 sessionVersion 失效。被 `proxy.ts` 拦截时 `meta.tookMs` 固定为 0。",
+        "headers": {
+          "x-request-id": {
+            "$ref": "#/components/headers/XRequestId"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            },
+            "example": {
+              "ok": false,
+              "error": {
+                "code": "UNAUTHORIZED",
+                "message": "请先登录"
+              },
+              "meta": {
+                "requestId": "8f0f0d0e-1a2b-4c3d-9e8f-7a6b5c4d3e2f",
+                "tookMs": 0
+              }
+            }
+          }
+        }
+      },
+      "BadRequest": {
+        "description": "参数缺失、ID 非法或 JSON 不合法",
+        "headers": {
+          "x-request-id": {
+            "$ref": "#/components/headers/XRequestId"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            },
+            "example": {
+              "ok": false,
+              "error": {
+                "code": "BAD_REQUEST",
+                "message": "ID 格式不正确"
+              },
+              "meta": {
+                "requestId": "8f0f0d0e-1a2b-4c3d-9e8f-7a6b5c4d3e2f",
+                "tookMs": 1
+              }
+            }
+          }
+        }
+      },
+      "ValidationFailed": {
+        "description": "Zod 校验失败，`details` 为逐条 `{ path, message }`",
+        "headers": {
+          "x-request-id": {
+            "$ref": "#/components/headers/XRequestId"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            },
+            "example": {
+              "ok": false,
+              "error": {
+                "code": "VALIDATION_FAILED",
+                "message": "请求参数校验失败",
+                "details": [
+                  {
+                    "path": "title",
+                    "message": "标题不能为空"
+                  }
+                ]
+              },
+              "meta": {
+                "requestId": "8f0f0d0e-1a2b-4c3d-9e8f-7a6b5c4d3e2f",
+                "tookMs": 2
+              }
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "文章或媒体不存在",
+        "headers": {
+          "x-request-id": {
+            "$ref": "#/components/headers/XRequestId"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            },
+            "example": {
+              "ok": false,
+              "error": {
+                "code": "NOT_FOUND",
+                "message": "文章不存在"
+              },
+              "meta": {
+                "requestId": "8f0f0d0e-1a2b-4c3d-9e8f-7a6b5c4d3e2f",
+                "tookMs": 3
+              }
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "资源冲突，例如媒体仍被文章引用、导入任务重复提交",
+        "headers": {
+          "x-request-id": {
+            "$ref": "#/components/headers/XRequestId"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            },
+            "example": {
+              "ok": false,
+              "error": {
+                "code": "CONFLICT",
+                "message": "媒体已被文章引用，确认后可强制删除",
+                "details": [
+                  {
+                    "id": "65f1c2a9b3d4e5f6a7b8c9d0",
+                    "title": "示例文章"
+                  }
+                ]
+              },
+              "meta": {
+                "requestId": "8f0f0d0e-1a2b-4c3d-9e8f-7a6b5c4d3e2f",
+                "tookMs": 4
+              }
+            }
+          }
+        }
+      },
+      "StorageError": {
+        "description": "存储适配器读写失败（R2 / Vercel / WebDAV / EdgeOne / base64）",
+        "headers": {
+          "x-request-id": {
+            "$ref": "#/components/headers/XRequestId"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            },
+            "example": {
+              "ok": false,
+              "error": {
+                "code": "STORAGE_ERROR",
+                "message": "存储连通性测试失败",
+                "details": {
+                  "type": "r2"
+                }
+              },
+              "meta": {
+                "requestId": "8f0f0d0e-1a2b-4c3d-9e8f-7a6b5c4d3e2f",
+                "tookMs": 860
+              }
+            }
+          }
+        }
+      },
+      "UpstreamError": {
+        "description": "`url` 类型媒体代理远端资源失败",
+        "headers": {
+          "x-request-id": {
+            "$ref": "#/components/headers/XRequestId"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            },
+            "example": {
+              "ok": false,
+              "error": {
+                "code": "UPSTREAM_ERROR",
+                "message": "远端资源读取失败"
+              },
+              "meta": {
+                "requestId": "8f0f0d0e-1a2b-4c3d-9e8f-7a6b5c4d3e2f",
+                "tookMs": 1200
+              }
+            }
+          }
+        }
+      },
+      "InternalError": {
+        "description": "未预期错误，具体原因只写服务端日志",
+        "headers": {
+          "x-request-id": {
+            "$ref": "#/components/headers/XRequestId"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            },
+            "example": {
+              "ok": false,
+              "error": {
+                "code": "INTERNAL",
+                "message": "服务内部错误"
+              },
+              "meta": {
+                "requestId": "8f0f0d0e-1a2b-4c3d-9e8f-7a6b5c4d3e2f",
+                "tookMs": 9
+              }
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "ApiMeta": {
+        "type": "object",
+        "description": "每个响应的元信息，成功与失败都会带上",
+        "required": [
+          "requestId",
+          "tookMs"
+        ],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "服务端生成的请求 ID，同时写入响应头 `x-request-id`"
+          },
+          "tookMs": {
+            "type": "integer",
+            "description": "服务端处理耗时（毫秒）"
+          }
+        }
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "description": "失败响应，HTTP 状态码与 `error.code` 同时正确",
+        "required": [
+          "ok",
+          "error",
+          "meta"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": false
+          },
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "description": "错误码，与 HTTP 状态码一一对应",
+                "enum": [
+                  "BAD_REQUEST",
+                  "VALIDATION_FAILED",
+                  "UNAUTHORIZED",
+                  "NOT_FOUND",
+                  "CONFLICT",
+                  "RATE_LIMITED",
+                  "STORAGE_ERROR",
+                  "UPSTREAM_ERROR",
+                  "INTERNAL"
+                ],
+                "x-enumDescriptions": {
+                  "BAD_REQUEST": "400 参数缺失、ID 非法、JSON 不合法",
+                  "VALIDATION_FAILED": "422 Zod 校验失败",
+                  "UNAUTHORIZED": "401 未登录或会话版本失效",
+                  "NOT_FOUND": "404 文章/媒体不存在",
+                  "CONFLICT": "409 媒体被引用、任务重复提交、唯一键冲突",
+                  "RATE_LIMITED": "429 登录尝试超限",
+                  "STORAGE_ERROR": "502 存储适配器失败",
+                  "UPSTREAM_ERROR": "502 url 类型媒体代理失败",
+                  "INTERNAL": "500 兜底错误"
+                }
+              },
+              "message": {
+                "type": "string",
+                "description": "可直接展示给用户的中文提示"
+              },
+              "details": {
+                "description": "附加信息。`VALIDATION_FAILED` 时为 `{ path, message }[]`；`CONFLICT` 删除媒体时为 `MediaReference[]`",
+                "oneOf": [
+                  {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/ValidationIssue"
+                    }
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/MediaReference"
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ApiMeta"
+          }
+        }
+      },
+      "ValidationIssue": {
+        "type": "object",
+        "description": "单条字段校验错误",
+        "required": [
+          "path",
+          "message"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "出错字段的点分路径，根级错误为 `(root)`",
+            "examples": [
+              "title",
+              "author.name",
+              "(root)"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "description": "中文错误说明"
+          }
+        }
+      },
+      "MediaReference": {
+        "type": "object",
+        "description": "引用了某媒体的文章摘要，用于删除前的占用提示",
+        "required": [
+          "id",
+          "title"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "文章 ID"
+          },
+          "title": {
+            "type": "string",
+            "description": "文章标题"
+          }
+        }
+      },
+      "NoticePriority": {
+        "type": "string",
+        "description": "优先级。urgent 紧急 / high 高 / normal 普通 / low 低",
+        "enum": [
+          "urgent",
+          "high",
+          "normal",
+          "low"
+        ],
+        "default": "normal"
+      },
+      "NoticeAuthor": {
+        "type": "object",
+        "description": "作者信息，两个字段都为可选；都为空的作者在响应中降级为 null",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 60,
+            "description": "作者名"
+          },
+          "avatar": {
+            "type": "string",
+            "description": "头像地址，通常为媒体 ID 或图片 URL"
+          }
+        }
+      },
+      "NoticeSummary": {
+        "type": "object",
+        "description": "列表项。不含正文、互动数据与 `extra`，避免无意义传输",
+        "required": [
+          "id",
+          "title",
+          "summary",
+          "channel",
+          "priority",
+          "timestamp",
+          "tags",
+          "cover",
+          "author",
+          "entityCount"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "文章 ID"
+          },
+          "title": {
+            "type": "string",
+            "description": "标题"
+          },
+          "summary": {
+            "type": "string",
+            "description": "摘要。创建时留空则自动截取正文前 120 字（去标签与 Markdown 标记）"
+          },
+          "channel": {
+            "type": "string",
+            "description": "频道名，纯字符串不做集合引用"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/NoticePriority"
+          },
+          "timestamp": {
+            "type": "integer",
+            "description": "发布时间（Unix 秒）。列表排序与时间区间筛选的依据，缺省取创建时刻"
+          },
+          "tags": {
+            "type": "array",
+            "description": "标签，已去重，最多 8 个",
+            "maxItems": 8,
+            "items": {
+              "type": "string",
+              "maxLength": 30
+            }
+          },
+          "cover": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "封面媒体 ID，未设置为 null"
+          },
+          "author": {
+            "description": "作者，无有效字段时为 null",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/NoticeAuthor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entityCount": {
+            "type": "integer",
+            "description": "附件数量（`entities` 数组长度），列表只给数量不给明细"
+          }
+        }
+      },
+      "NoticeDetail": {
+        "type": "object",
+        "description": "详情。在列表项基础上追加正文与附件明细。公开接口的 HTML 正文经 sanitize-html 过滤，管理接口返回原文",
+        "required": [
+          "id",
+          "title",
+          "summary",
+          "channel",
+          "priority",
+          "timestamp",
+          "tags",
+          "cover",
+          "author",
+          "entityCount",
+          "body",
+          "bodyFormat",
+          "entities"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "文章 ID"
+          },
+          "title": {
+            "type": "string",
+            "description": "标题"
+          },
+          "summary": {
+            "type": "string",
+            "description": "摘要"
+          },
+          "channel": {
+            "type": "string",
+            "description": "频道名"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/NoticePriority"
+          },
+          "timestamp": {
+            "type": "integer",
+            "description": "发布时间（Unix 秒）"
+          },
+          "tags": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "string"
+            }
+          },
+          "cover": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "封面媒体 ID"
+          },
+          "author": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/NoticeAuthor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entityCount": {
+            "type": "integer",
+            "description": "附件数量"
+          },
+          "body": {
+            "type": "string",
+            "description": "正文原文。公开接口在 `bodyFormat` 为 html 时会做白名单过滤并给外链补 `target=\"_blank\" rel=\"noopener noreferrer\"`"
+          },
+          "bodyFormat": {
+            "type": "string",
+            "description": "服务端根据正文是否含 HTML 标签自动判定",
+            "enum": [
+              "markdown",
+              "html"
+            ]
+          },
+          "entities": {
+            "type": "array",
+            "description": "附件媒体 ID 列表，顺序即展示顺序",
+            "items": {
+              "type": "string"
+            }
+          },
+          "extra": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "业务自定义 JSON，仅管理接口返回"
+          }
+        }
+      },
+      "NoticeNeighbor": {
+        "type": "object",
+        "description": "相邻文章引用，按发布时间取紧邻的一篇",
+        "required": [
+          "id",
+          "title"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "文章 ID"
+          },
+          "title": {
+            "type": "string",
+            "description": "文章标题"
+          }
+        }
+      },
+      "NoticeAttachment": {
+        "type": "object",
+        "description": "附件明细，由 `entities` 中的媒体 ID 解析得到",
+        "required": [
+          "id",
+          "name",
+          "format"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "媒体 ID，下载走 `/api/media/{id}?download=1`"
+          },
+          "name": {
+            "type": "string",
+            "description": "文件名"
+          },
+          "format": {
+            "type": "string",
+            "description": "小写扩展名，如 pdf / png"
+          }
+        }
+      },
+      "NoticeDetailResponse": {
+        "type": "object",
+        "description": "详情响应体，在 `NoticeDetail` 之上追加前后篇与附件",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/NoticeDetail"
+          },
+          {
+            "type": "object",
+            "required": [
+              "prev",
+              "next",
+              "attachments"
+            ],
+            "properties": {
+              "prev": {
+                "description": "发布时间更早的相邻文章，没有则为 null",
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/NoticeNeighbor"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "next": {
+                "description": "发布时间更晚的相邻文章，没有则为 null",
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/NoticeNeighbor"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "attachments": {
+                "type": "array",
+                "description": "附件明细；已删除或非法 ID 会被静默丢弃",
+                "items": {
+                  "$ref": "#/components/schemas/NoticeAttachment"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "NoticeInput": {
+        "type": "object",
+        "description": "新建文章的请求体。`title`、`channel` 必填，其余可选；未知字段被忽略",
+        "required": [
+          "title",
+          "channel"
+        ],
+        "properties": {
+          "channel": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60,
+            "description": "频道名"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/NoticePriority"
+          },
+          "timestamp": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "发布时间（Unix 秒）。省略则取当前时间"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "标题"
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 300,
+            "description": "摘要。省略或留空时自动从正文截取前 120 字"
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 500000,
+            "description": "正文，支持 Markdown 或 HTML，原样存储；格式由服务端自动判定"
+          },
+          "author": {
+            "$ref": "#/components/schemas/NoticeAuthor"
+          },
+          "cover": {
+            "type": "string",
+            "description": "封面媒体 ID"
+          },
+          "tags": {
+            "type": "array",
+            "description": "标签，服务端去重并截断到 8 个",
+            "maxItems": 8,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 30
+            }
+          },
+          "entities": {
+            "type": "array",
+            "description": "附件媒体 ID 列表",
+            "items": {
+              "type": "string"
+            }
+          },
+          "extra": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "业务自定义 JSON，原样存储"
+          }
+        },
+        "example": {
+          "channel": "产品",
+          "priority": "normal",
+          "timestamp": 1734567890,
+          "title": "关于版本更新的通知",
+          "summary": "本次更新包含三项功能调整",
+          "body": "## 更新内容\n\n- 列表支持多选筛选\n- 媒体去重",
+          "author": {
+            "name": "运营组"
+          },
+          "cover": "65f1c2a9b3d4e5f6a7b8c9d1",
+          "tags": [
+            "版本",
+            "更新"
+          ],
+          "entities": [
+            "65f1c2a9b3d4e5f6a7b8c9d2"
+          ],
+          "extra": {
+            "source": "manual"
+          }
+        }
+      },
+      "NoticeUpdateInput": {
+        "type": "object",
+        "description": "局部更新的请求体。所有字段可选：缺省表示不修改，传空串表示清空该字段。注意不能携带创建时的默认值语义，`priority` 不传不会重置为 normal",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60,
+            "description": "频道名"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/NoticePriority"
+          },
+          "timestamp": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "发布时间（Unix 秒）"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "标题"
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 300,
+            "description": "摘要。传空串则按新正文重新生成"
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 500000,
+            "description": "正文"
+          },
+          "author": {
+            "$ref": "#/components/schemas/NoticeAuthor"
+          },
+          "cover": {
+            "type": "string",
+            "description": "封面媒体 ID，空串清除"
+          },
+          "tags": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 30
+            }
+          },
+          "entities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "extra": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "整体替换，不是深合并"
+          }
+        }
+      },
+      "NoticeListResponse": {
+        "type": "object",
+        "description": "分页列表响应体",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NoticeSummary"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "description": "满足筛选条件的总条数"
+          },
+          "page": {
+            "type": "integer",
+            "description": "当前页码，从 1 开始"
+          },
+          "pageSize": {
+            "type": "integer",
+            "description": "每页条数"
+          }
+        }
+      },
+      "ChannelStat": {
+        "type": "object",
+        "description": "频道及其文章数量",
+        "required": [
+          "channel",
+          "count"
+        ],
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "频道名"
+          },
+          "count": {
+            "type": "integer",
+            "description": "该频道下的文章数"
+          }
+        }
+      },
+      "TagStat": {
+        "type": "object",
+        "description": "标签及其出现次数",
+        "required": [
+          "tag",
+          "count"
+        ],
+        "properties": {
+          "tag": {
+            "type": "string",
+            "description": "标签名"
+          },
+          "count": {
+            "type": "integer",
+            "description": "带该标签的文章数"
+          }
+        }
+      },
+      "MediaType": {
+        "type": "string",
+        "description": "媒体存储类型。base64 内置 / url 外部链接 / r2 Cloudflare R2 / vercel Vercel Blob / webdav WebDAV / edgeone EdgeOne Blob",
+        "enum": [
+          "base64",
+          "url",
+          "r2",
+          "vercel",
+          "webdav",
+          "edgeone"
+        ]
+      },
+      "Media": {
+        "type": "object",
+        "description": "媒体条目。适配器内部标识 `src`、`referer`、`hash` 一律不下发",
+        "required": [
+          "id",
+          "type",
+          "format",
+          "name",
+          "author",
+          "url"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "媒体 ID"
+          },
+          "type": {
+            "$ref": "#/components/schemas/MediaType"
+          },
+          "format": {
+            "type": "string",
+            "description": "小写扩展名"
+          },
+          "name": {
+            "type": "string",
+            "description": "展示名，通常为原始文件名"
+          },
+          "author": {
+            "description": "上传者，无有效字段时为 null",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/NoticeAuthor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "url": {
+            "type": "string",
+            "description": "固定为站内代理路径 `/api/media/{id}`，不暴露真实存储地址"
+          },
+          "size": {
+            "type": "integer",
+            "description": "文件字节数。仅上传响应返回，不落库"
+          }
+        }
+      },
+      "MediaListResponse": {
+        "type": "object",
+        "description": "媒体分页列表",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Media"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "description": "满足筛选条件的总条数"
+          },
+          "page": {
+            "type": "integer",
+            "description": "当前页码"
+          },
+          "pageSize": {
+            "type": "integer",
+            "description": "每页条数"
+          }
+        }
+      },
+      "MediaUploadResponse": {
+        "type": "object",
+        "description": "上传结果，在 `Media` 基础上追加去重标记",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Media"
+          },
+          {
+            "type": "object",
+            "required": [
+              "deduped"
+            ],
+            "properties": {
+              "deduped": {
+                "type": "boolean",
+                "description": "为 true 表示命中了内容哈希相同的已有媒体，本次未新建记录"
+              }
+            }
+          }
+        ]
+      },
+      "MediaUpdateInput": {
+        "type": "object",
+        "description": "媒体元信息局部更新，两个字段都可选",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "description": "展示名"
+          },
+          "author": {
+            "$ref": "#/components/schemas/NoticeAuthor"
+          }
+        }
+      },
+      "StorageFieldState": {
+        "type": "object",
+        "description": "单个存储凭据的脱敏状态，真实值永不下发",
+        "required": [
+          "set",
+          "hint"
+        ],
+        "properties": {
+          "set": {
+            "type": "boolean",
+            "description": "是否已配置"
+          },
+          "hint": {
+            "type": "string",
+            "description": "已配置时为末四位掩码（如 `••••a1b2`），未配置为空串"
+          }
+        }
+      },
+      "Settings": {
+        "type": "object",
+        "description": "脱敏后的站点设置",
+        "required": [
+          "admin",
+          "media"
+        ],
+        "properties": {
+          "admin": {
+            "type": "object",
+            "required": [
+              "username",
+              "passwordUpdatedAt"
+            ],
+            "properties": {
+              "username": {
+                "type": "string",
+                "description": "管理员用户名"
+              },
+              "passwordUpdatedAt": {
+                "type": "integer",
+                "description": "上次改密时间（Unix 秒），从未修改为 0"
+              }
+            }
+          },
+          "media": {
+            "type": "object",
+            "required": [
+              "type",
+              "maxUploadSize",
+              "allowedFormats",
+              "credentials"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/components/schemas/MediaType"
+              },
+              "maxUploadSize": {
+                "type": "integer",
+                "description": "单文件上传上限（字节），上限 4194304"
+              },
+              "allowedFormats": {
+                "type": "array",
+                "description": "允许的扩展名白名单，小写",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "credentials": {
+                "type": "object",
+                "description": "各存储凭据的配置状态，键为凭据名",
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/StorageFieldState"
+                }
+              }
+            }
+          }
+        }
+      },
+      "SettingsPatchInput": {
+        "type": "object",
+        "description": "站点设置局部更新。两组都可选，未出现的字段保持不变",
+        "properties": {
+          "admin": {
+            "type": "object",
+            "properties": {
+              "username": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40,
+                "description": "管理员用户名"
+              }
+            }
+          },
+          "media": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "$ref": "#/components/schemas/MediaType"
+              },
+              "maxUploadSize": {
+                "type": "integer",
+                "minimum": 1024,
+                "maximum": 4194304,
+                "description": "单文件上传上限（字节）"
+              },
+              "allowedFormats": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 30,
+                "description": "扩展名白名单，服务端统一转小写",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 12
+                }
+              },
+              "credentials": {
+                "type": "object",
+                "description": "存储凭据。值为字符串表示写入，为 null 或空串表示清除；不在白名单内的键被忽略",
+                "additionalProperties": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "example": {
+          "media": {
+            "type": "r2",
+            "maxUploadSize": 2097152,
+            "credentials": {
+              "r2Bucket": "notice-media",
+              "r2SecretAccessKey": null
+            }
+          }
+        }
+      },
+      "PasswordChangeInput": {
+        "type": "object",
+        "description": "修改管理员密码。成功后 `sessionVersion` 自增，所有旧会话立即失效",
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ],
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "minLength": 1,
+            "description": "当前密码"
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 128,
+            "description": "新密码，至少 10 位"
+          }
+        }
+      },
+      "StorageTestInput": {
+        "type": "object",
+        "description": "存储连通性测试。写入一张 1×1 PNG 后读回并删除，验证三个动作。请求体可完全省略",
+        "properties": {
+          "type": {
+            "description": "要测试的存储类型。省略则用当前设置中的类型；`url` 类型不支持写入测试",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/MediaType"
+              }
+            ]
+          }
+        }
+      },
+      "StorageTestResult": {
+        "type": "object",
+        "description": "存储连通性测试结果",
+        "required": [
+          "ok",
+          "type",
+          "tookMs"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "description": "三个动作全部成功为 true"
+          },
+          "type": {
+            "$ref": "#/components/schemas/MediaType"
+          },
+          "tookMs": {
+            "type": "integer",
+            "description": "写入 + 读回 + 删除的总耗时（毫秒）"
+          }
+        }
+      },
+      "ImportAdapter": {
+        "type": "object",
+        "description": "已注册的导入适配器",
+        "required": [
+          "id",
+          "label",
+          "accepts",
+          "remote"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "适配器标识，提交给 parse 接口",
+            "examples": [
+              "zmd",
+              "zmd-web",
+              "gamekee-ba"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "description": "展示名"
+          },
+          "accepts": {
+            "type": "array",
+            "description": "可接受的 MIME 或扩展名列表",
+            "items": {
+              "type": "string"
+            }
+          },
+          "remote": {
+            "type": "boolean",
+            "description": "为 true 表示适配器自行从远端取数，parse 时无需上传文件"
+          },
+          "description": {
+            "type": "string",
+            "description": "适配器说明"
+          }
+        }
+      },
+      "ImportPreview": {
+        "type": "object",
+        "description": "解析预览。原始数据逐条按文章入参校验，明细最多回 200 条、样例最多 20 条；完整有效数据暂存在服务端 2 小时",
+        "required": [
+          "jobId",
+          "adapter",
+          "filename",
+          "total",
+          "validCount",
+          "invalidCount",
+          "invalid",
+          "sample"
+        ],
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "description": "导入任务 ID，提交时回传；2 小时后过期"
+          },
+          "adapter": {
+            "type": "string",
+            "description": "实际使用的适配器 ID"
+          },
+          "filename": {
+            "type": "string",
+            "description": "上传文件名；远程适配器无文件时为 `{adapterId}:remote`"
+          },
+          "total": {
+            "type": "integer",
+            "description": "适配器解析出的原始条目数"
+          },
+          "validCount": {
+            "type": "integer",
+            "description": "通过校验的条目数"
+          },
+          "invalidCount": {
+            "type": "integer",
+            "description": "未通过校验的条目数"
+          },
+          "invalid": {
+            "type": "array",
+            "description": "校验失败明细，最多 200 条",
+            "items": {
+              "type": "object",
+              "required": [
+                "index",
+                "path",
+                "message"
+              ],
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "description": "原始条目下标，从 0 开始"
+                },
+                "path": {
+                  "type": "string",
+                  "description": "出错字段路径"
+                },
+                "message": {
+                  "type": "string",
+                  "description": "中文错误说明"
+                }
+              }
+            }
+          },
+          "sample": {
+            "type": "array",
+            "description": "前 20 条通过校验的数据，形状同 `NoticeInput`",
+            "maxItems": 20,
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      },
+      "ImportCommitInput": {
+        "type": "object",
+        "description": "提交导入任务",
+        "required": [
+          "jobId"
+        ],
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{24}$",
+            "description": "parse 接口返回的任务 ID"
+          },
+          "channel": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60,
+            "description": "覆盖所有条目的频道名，省略则用数据自带频道"
+          },
+          "duplicate": {
+            "type": "string",
+            "description": "遇到重复文章时的处理方式：skip 跳过 / overwrite 覆盖",
+            "enum": [
+              "skip",
+              "overwrite"
+            ],
+            "default": "skip"
+          }
+        }
+      },
+      "ImportReport": {
+        "type": "object",
+        "description": "导入结果统计",
+        "required": [
+          "inserted",
+          "skipped",
+          "failed"
+        ],
+        "properties": {
+          "inserted": {
+            "type": "integer",
+            "description": "新建条数"
+          },
+          "skipped": {
+            "type": "integer",
+            "description": "因重复被跳过的条数"
+          },
+          "failed": {
+            "type": "integer",
+            "description": "写入失败的条数"
+          }
+        }
+      },
+      "DeletedResult": {
+        "type": "object",
+        "description": "删除结果",
+        "required": [
+          "deleted"
+        ],
+        "properties": {
+          "deleted": {
+            "type": "boolean",
+            "description": "是否删除成功"
+          }
+        }
+      },
+      "BatchDeletedResult": {
+        "type": "object",
+        "description": "批量删除结果",
+        "required": [
+          "deleted"
+        ],
+        "properties": {
+          "deleted": {
+            "type": "integer",
+            "description": "实际删除的条数"
+          }
+        }
+      },
+      "BatchDeleteInput": {
+        "type": "object",
+        "description": "批量删除文章",
+        "required": [
+          "ids"
+        ],
+        "properties": {
+          "ids": {
+            "type": "array",
+            "description": "待删除的文章 ID，1 到 100 个",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            }
+          }
+        }
+      },
+      "PasswordChangedResult": {
+        "type": "object",
+        "description": "改密结果。会话版本已自增，客户端需重新登录",
+        "required": [
+          "changed"
+        ],
+        "properties": {
+          "changed": {
+            "type": "boolean",
+            "description": "固定为 true"
+          }
+        }
+      }
+    }
+  },
+  "security": [],
+  "paths": {
+    "/api/notices": {
+      "get": {
+        "tags": [
+          "通知"
+        ],
+        "summary": "分页查询文章列表",
+        "description": "公开接口，无需登录。默认按发布时间倒序，返回列表项摘要，不含正文与 `extra`。筛选条件之间为 AND 关系；同名参数重复传递表示多选，`tag` 的多选语义是全部命中（`$all`）。",
+        "operationId": "listNotices",
+        "security": [],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "标题或摘要关键词，大小写不敏感的正则匹配，服务端截断到 80 字",
+            "schema": {
+              "type": "string",
+              "maxLength": 80,
+              "default": ""
+            }
+          },
+          {
+            "name": "channel",
+            "in": "query",
+            "description": "频道名，可重复传参表示多选（`$in`）",
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          {
+            "name": "priority",
+            "in": "query",
+            "description": "优先级，可重复传参表示多选",
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/NoticePriority"
+              }
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "description": "标签，可重复传参，要求文章同时命中全部标签",
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "发布时间下界（Unix 秒，闭区间）",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "发布时间上界（Unix 秒，闭区间）",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "排序方向，按发布时间",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "newest",
+                "oldest"
+              ],
+              "default": "newest"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始；非法值回落为 1",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "每页条数，超过 60 按 60 处理",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 60,
+              "default": 12
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/NoticeListResponse"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "items": [
+                      {
+                        "id": "65f1c2a9b3d4e5f6a7b8c9d0",
+                        "title": "关于版本更新的通知",
+                        "summary": "本次更新包含三项功能调整",
+                        "channel": "产品",
+                        "priority": "normal",
+                        "timestamp": 1734567890,
+                        "tags": [
+                          "版本",
+                          "更新"
+                        ],
+                        "cover": null,
+                        "author": {
+                          "name": "运营组"
+                        },
+                        "entityCount": 1
+                      }
+                    ],
+                    "total": 1,
+                    "page": 1,
+                    "pageSize": 12
+                  },
+                  "meta": {
+                    "requestId": "8f0f0d0e-1a2b-4c3d-9e8f-7a6b5c4d3e2f",
+                    "tookMs": 24
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/notices/{id}": {
+      "get": {
+        "tags": [
+          "通知"
+        ],
+        "summary": "获取文章详情",
+        "description": "公开接口。返回正文、附件明细以及按发布时间紧邻的上一篇/下一篇。HTML 正文会经 sanitize-html 白名单过滤，外链自动补 `target=\"_blank\" rel=\"noopener noreferrer\"`。管理端专属字段 `extra` 不会返回。",
+        "operationId": "getNoticeDetail",
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/NoticeId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/NoticeDetailResponse"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/channels": {
+      "get": {
+        "tags": [
+          "频道与标签"
+        ],
+        "summary": "获取频道统计",
+        "description": "公开接口。按文章数倒序返回全部频道，最多 100 个，用于列表页的频道筛选项。",
+        "operationId": "listChannels",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ChannelStat"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                },
+                "example": {
+                  "ok": true,
+                  "data": [
+                    {
+                      "channel": "产品",
+                      "count": 12
+                    },
+                    {
+                      "channel": "运维",
+                      "count": 5
+                    }
+                  ],
+                  "meta": {
+                    "requestId": "8f0f0d0e-1a2b-4c3d-9e8f-7a6b5c4d3e2f",
+                    "tookMs": 11
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/tags": {
+      "get": {
+        "tags": [
+          "频道与标签"
+        ],
+        "summary": "获取标签统计",
+        "description": "公开接口。按出现次数倒序返回热门标签，用于列表页的标签筛选项。",
+        "operationId": "listTags",
+        "security": [],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "返回条数上限。非正整数回落为 60，超过 100 按 100 处理",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 60
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TagStat"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                },
+                "example": {
+                  "ok": true,
+                  "data": [
+                    {
+                      "tag": "更新",
+                      "count": 9
+                    },
+                    {
+                      "tag": "维护",
+                      "count": 3
+                    }
+                  ],
+                  "meta": {
+                    "requestId": "8f0f0d0e-1a2b-4c3d-9e8f-7a6b5c4d3e2f",
+                    "tookMs": 8
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/media/{id}": {
+      "get": {
+        "tags": [
+          "媒体"
+        ],
+        "summary": "读取媒体字节流",
+        "description": "公开接口，返回原始字节而非 JSON envelope。支持 `If-None-Match` 条件请求：ETag 命中时返回 304 且无响应体。`url` 类型媒体由服务端代理远端资源，失败回 `UPSTREAM_ERROR`。",
+        "operationId": "getMediaFile",
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/MediaId"
+          },
+          {
+            "name": "download",
+            "in": "query",
+            "description": "为 `1` 时响应头 `Content-Disposition` 变为 `attachment` 并带上 UTF-8 文件名，用于附件下载",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "description": "上次响应的 ETag，格式为 `\"m-{id}\"`。命中时返回 304",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "媒体内容",
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "ETag": {
+                "description": "格式为 `\"m-{id}\"`",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "base64 与对象存储为 `public, max-age=31536000, immutable`；`url` 类型为 `public, max-age=3600`",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Disposition": {
+                "description": "默认 `inline`，`?download=1` 时为 `attachment; filename*=UTF-8''{name}`",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Content-Type-Options": {
+                "description": "固定 `nosniff`",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Security-Policy": {
+                "description": "固定 `default-src 'none'`",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "ETag 命中，内容未变更",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "502": {
+            "$ref": "#/components/responses/UpstreamError"
+          }
+        }
+      },
+      "head": {
+        "tags": [
+          "媒体"
+        ],
+        "summary": "读取媒体元信息",
+        "description": "与 GET 相同的响应头，但无响应体。同样会实际读取一次存储内容以取得准确长度。",
+        "operationId": "headMediaFile",
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/MediaId"
+          },
+          {
+            "name": "download",
+            "in": "query",
+            "description": "为 `1` 时 `Content-Disposition` 变为 `attachment`",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "媒体元信息",
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/XRequestId"
+              },
+              "Content-Type": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/admin/notices": {
+      "get": {
+        "tags": [
+          "后台-通知"
+        ],
+        "summary": "后台查询文章列表",
+        "description": "查询参数与公开列表完全一致，但内部保留 `extra` 与互动字段的投影，供管理端展示。",
+        "operationId": "adminListNotices",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "标题或摘要关键词，≤ 80 字",
+            "schema": {
+              "type": "string",
+              "maxLength": 80,
+              "default": ""
+            }
+          },
+          {
+            "name": "channel",
+            "in": "query",
+            "description": "频道名，可重复",
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "priority",
+            "in": "query",
+            "description": "优先级，可重复",
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/NoticePriority"
+              }
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "description": "标签，可重复，要求全部命中",
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "发布时间下界（Unix 秒）",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "发布时间上界（Unix 秒）",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "排序方向",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "newest",
+                "oldest"
+              ],
+              "default": "newest"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "每页条数，上限 60",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 60,
+              "default": 12
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/NoticeListResponse"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "后台-通知"
+        ],
+        "summary": "新建文章",
+        "description": "`title` 与 `channel` 必填。`timestamp` 省略时取服务端当前时间；`summary` 省略或留空时自动从正文截取前 120 字。返回创建后的完整详情（含 `extra`）。",
+        "operationId": "adminCreateNotice",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoticeInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "创建成功，返回完整详情",
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/NoticeDetail"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/admin/notices/{id}": {
+      "get": {
+        "tags": [
+          "后台-通知"
+        ],
+        "summary": "获取文章编辑数据",
+        "description": "返回完整详情，包含未过滤的原始正文与 `extra`，以及前后篇与附件明细。",
+        "operationId": "adminGetNotice",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/NoticeId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/NoticeDetailResponse"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "后台-通知"
+        ],
+        "summary": "局部更新文章",
+        "description": "字段缺省表示不修改，传空串表示清空。`extra` 为整体替换而非深合并。返回更新后的完整详情。",
+        "operationId": "adminUpdateNotice",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/NoticeId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoticeUpdateInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/NoticeDetail"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "后台-通知"
+        ],
+        "summary": "删除文章",
+        "description": "删除单篇文章，不影响其引用的媒体记录。",
+        "operationId": "adminDeleteNotice",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/NoticeId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "删除成功",
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/DeletedResult"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/admin/notices/batch": {
+      "post": {
+        "tags": [
+          "后台-通知"
+        ],
+        "summary": "批量删除文章",
+        "description": "一次最多删除 100 篇，返回实际删除条数。不存在的 ID 会被忽略。",
+        "operationId": "adminBatchDeleteNotices",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchDeleteInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "删除成功",
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/BatchDeletedResult"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/admin/media": {
+      "get": {
+        "tags": [
+          "后台-媒体"
+        ],
+        "summary": "分页查询媒体",
+        "description": "按创建时间倒序返回媒体列表，可按名称关键词、存储类型与扩展名过滤。",
+        "operationId": "adminListMedia",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "名称关键词，大小写不敏感的正则匹配，≤ 80 字",
+            "schema": {
+              "type": "string",
+              "maxLength": 80,
+              "default": ""
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "存储类型",
+            "schema": {
+              "$ref": "#/components/schemas/MediaType"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "description": "扩展名，如 png / pdf，≤ 10 字",
+            "schema": {
+              "type": "string",
+              "maxLength": 10
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，非法值回落为 1",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "每页条数，默认 24，上限 60",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 60,
+              "default": 24
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/MediaListResponse"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "后台-媒体"
+        ],
+        "summary": "上传媒体",
+        "description": "以 `multipart/form-data` 提交。服务端按内容哈希去重：命中相同内容的已有媒体时直接返回该记录并置 `deduped: true`，不新建。文件大小受设置中的 `maxUploadSize` 与全局上限 4 MB 约束。响应中的 `size` 为本次上传的字节数。",
+        "operationId": "adminUploadMedia",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "待上传文件，大小不超过 4 MB，扩展名需在设置白名单内"
+                  },
+                  "author": {
+                    "type": "string",
+                    "description": "上传者名称，可选；留空则不记录作者"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "上传成功",
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/MediaUploadResponse"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "id": "65f1c2a9b3d4e5f6a7b8c9d1",
+                    "type": "r2",
+                    "format": "png",
+                    "name": "banner.png",
+                    "author": {
+                      "name": "运营组"
+                    },
+                    "url": "/api/media/65f1c2a9b3d4e5f6a7b8c9d1",
+                    "size": 204800,
+                    "deduped": false
+                  },
+                  "meta": {
+                    "requestId": "8f0f0d0e-1a2b-4c3d-9e8f-7a6b5c4d3e2f",
+                    "tookMs": 320
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "502": {
+            "$ref": "#/components/responses/StorageError"
+          }
+        }
+      }
+    },
+    "/api/admin/media/{id}": {
+      "patch": {
+        "tags": [
+          "后台-媒体"
+        ],
+        "summary": "更新媒体元信息",
+        "description": "只修改展示名与作者，不影响已存储的字节内容。",
+        "operationId": "adminUpdateMedia",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/MediaId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MediaUpdateInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Media"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "后台-媒体"
+        ],
+        "summary": "删除媒体",
+        "description": "默认先检查文章引用（封面、附件、作者头像、正文中出现该 ID），被引用时返回 `CONFLICT` 并在 `details` 里给出引用文章。`?force=1` 跳过检查，直接删除存储文件与记录。",
+        "operationId": "adminDeleteMedia",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/MediaId"
+          },
+          {
+            "name": "force",
+            "in": "query",
+            "description": "为 `1` 时忽略引用检查强制删除",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "删除成功",
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/DeletedResult"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "502": {
+            "$ref": "#/components/responses/StorageError"
+          }
+        }
+      }
+    },
+    "/api/admin/import/adapters": {
+      "get": {
+        "tags": [
+          "后台-导入"
+        ],
+        "summary": "列出可用的导入适配器",
+        "description": "返回 `lib/server/import/registry.ts` 中已注册的适配器。`remote` 为 true 的适配器自行从远端取数，调用 parse 时无需上传文件。",
+        "operationId": "adminListImportAdapters",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ImportAdapter"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                },
+                "example": {
+                  "ok": true,
+                  "data": [
+                    {
+                      "id": "zmd",
+                      "label": "终末地聚合接口",
+                      "accepts": [
+                        "application/json"
+                      ],
+                      "remote": true,
+                      "description": "从聚合接口拉取游戏内公告"
+                    },
+                    {
+                      "id": "gamekee-ba",
+                      "label": "蔚蓝档案活动",
+                      "accepts": [
+                        "application/json"
+                      ],
+                      "remote": true
+                    }
+                  ],
+                  "meta": {
+                    "requestId": "8f0f0d0e-1a2b-4c3d-9e8f-7a6b5c4d3e2f",
+                    "tookMs": 3
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/admin/import/parse": {
+      "post": {
+        "tags": [
+          "后台-导入"
+        ],
+        "summary": "解析导入数据并生成预览",
+        "description": "以 `multipart/form-data` 提交适配器标识与文件。适配器产出的原始条目逐条按文章入参校验，通过的数据暂存为导入任务（2 小时后过期），失败明细最多回 200 条、样例最多 20 条。远程适配器可省略 `file`。",
+        "operationId": "adminParseImport",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "adapter"
+                ],
+                "properties": {
+                  "adapter": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "适配器 ID，取自 adapters 接口"
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "待导入文件，上限 4 MB。`remote` 为 true 的适配器可省略"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "解析完成，返回预览",
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ImportPreview"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "502": {
+            "$ref": "#/components/responses/UpstreamError"
+          }
+        }
+      }
+    },
+    "/api/admin/import/commit": {
+      "post": {
+        "tags": [
+          "后台-导入"
+        ],
+        "summary": "提交导入任务",
+        "description": "把 parse 阶段暂存的有效数据写入文章集合。任务提交后状态置为 `committed`，重复提交返回 `CONFLICT`。`channel` 可统一覆盖所有条目的频道。",
+        "operationId": "adminCommitImport",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportCommitInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "导入完成",
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ImportReport"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "inserted": 42,
+                    "skipped": 3,
+                    "failed": 0
+                  },
+                  "meta": {
+                    "requestId": "8f0f0d0e-1a2b-4c3d-9e8f-7a6b5c4d3e2f",
+                    "tookMs": 4210
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/admin/settings": {
+      "get": {
+        "tags": [
+          "后台-设置"
+        ],
+        "summary": "获取站点设置",
+        "description": "返回脱敏后的设置。所有存储凭据只给 `{ set, hint }`，`hint` 为末四位掩码，真实值永不下发。",
+        "operationId": "adminGetSettings",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Settings"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "admin": {
+                      "username": "admin",
+                      "passwordUpdatedAt": 1734567890
+                    },
+                    "media": {
+                      "type": "r2",
+                      "maxUploadSize": 4194304,
+                      "allowedFormats": [
+                        "png",
+                        "jpg",
+                        "pdf"
+                      ],
+                      "credentials": {
+                        "r2Bucket": {
+                          "set": true,
+                          "hint": "••••edia"
+                        },
+                        "r2SecretAccessKey": {
+                          "set": false,
+                          "hint": ""
+                        }
+                      }
+                    }
+                  },
+                  "meta": {
+                    "requestId": "8f0f0d0e-1a2b-4c3d-9e8f-7a6b5c4d3e2f",
+                    "tookMs": 6
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "后台-设置"
+        ],
+        "summary": "更新站点设置",
+        "description": "局部更新。`media.credentials` 中值为 `null` 或空串表示清除该凭据，非白名单键被忽略。`allowedFormats` 会被统一转小写。返回更新后的完整脱敏设置。",
+        "operationId": "adminUpdateSettings",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsPatchInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Settings"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/admin/settings/password": {
+      "post": {
+        "tags": [
+          "后台-设置"
+        ],
+        "summary": "修改管理员密码",
+        "description": "校验当前密码并写入新密码，同时把 `sessionVersion` 自增，所有已签发的会话立即失效，客户端需重新登录。",
+        "operationId": "adminChangePassword",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChangeInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "修改成功",
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PasswordChangedResult"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/admin/settings/storage/test": {
+      "post": {
+        "tags": [
+          "后台-设置"
+        ],
+        "summary": "测试存储连通性",
+        "description": "用指定类型（缺省取当前设置）的适配器写入一张 1×1 PNG，读回校验长度后再删除，验证写入、读取、删除三个动作。`url` 类型不支持写入测试。请求体可完全省略。",
+        "operationId": "adminTestStorage",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StorageTestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "测试通过",
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/StorageTestResult"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "ok": true,
+                    "type": "r2",
+                    "tookMs": 860
+                  },
+                  "meta": {
+                    "requestId": "8f0f0d0e-1a2b-4c3d-9e8f-7a6b5c4d3e2f",
+                    "tookMs": 862
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "502": {
+            "$ref": "#/components/responses/StorageError"
+          }
+        }
+      }
+    },
+    "/api/auth/callback/credentials": {
+      "post": {
+        "tags": [
+          "认证"
+        ],
+        "summary": "管理员登录",
+        "description": "Auth.js Credentials 登录端点，`Content-Type` 为 `application/x-www-form-urlencoded`。校验通过后下发 JWT 会话 Cookie（有效期 12 小时）。同一用户名 10 分钟内失败 5 次触发限流，需等待窗口过期。",
+        "operationId": "login",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "username",
+                  "password"
+                ],
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "管理员用户名"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "管理员密码"
+                  },
+                  "csrfToken": {
+                    "type": "string",
+                    "description": "Auth.js CSRF Token，从 `/api/auth/csrf` 获取后原样回传"
+                  },
+                  "callbackUrl": {
+                    "type": "string",
+                    "description": "登录成功后的跳转地址，通常为 `/admin/notices`"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "302": {
+            "description": "登录成功，跳转到 `callbackUrl` 并下发会话 Cookie；失败时跳回 `/admin/login`",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Set-Cookie": {
+                "description": "Auth.js 会话 Cookie",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "登录尝试超限（同一用户名 10 分钟内 5 次失败）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/signout": {
+      "post": {
+        "tags": [
+          "认证"
+        ],
+        "summary": "退出登录",
+        "description": "Auth.js 登出端点，清除会话 Cookie。需要携带 CSRF Token。",
+        "operationId": "logout",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "csrfToken": {
+                    "type": "string",
+                    "description": "Auth.js CSRF Token"
+                  },
+                  "callbackUrl": {
+                    "type": "string",
+                    "description": "登出后的跳转地址"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "302": {
+            "description": "登出成功，清除会话 Cookie",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/session": {
+      "get": {
+        "tags": [
+          "认证"
+        ],
+        "summary": "获取当前会话",
+        "description": "返回当前登录用户信息；未登录时返回空对象。可用于前端判断登录状态。",
+        "operationId": "getSession",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "当前会话",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "登录时含 `user`、`expires`，未登录时为空对象",
+                  "properties": {
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "description": "管理员用户名"
+                        }
+                      }
+                    },
+                    "expires": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "会话过期时间"
+                    }
+                  }
+                },
+                "example": {
+                  "user": {
+                    "name": "admin"
+                  },
+                  "expires": "2025-01-01T12:00:00.000Z"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/csrf": {
+      "get": {
+        "tags": [
+          "认证"
+        ],
+        "summary": "获取 CSRF Token",
+        "description": "登录与登出前需要先取到 CSRF Token 并随表单回传。",
+        "operationId": "getCsrfToken",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "CSRF Token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "csrfToken"
+                  ],
+                  "properties": {
+                    "csrfToken": {
+                      "type": "string",
+                      "description": "本次会话的 CSRF Token"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mcp": {
+      "post": {
+        "tags": [
+          "MCP"
+        ],
+        "summary": "MCP JSON-RPC 端点",
+        "description": "无状态 MCP 服务，不分配会话 ID、不提供服务端推送，客户端只用 POST。支持 initialize / ping / tools/list / tools/call 四个方法。鉴权完全复用管理员会话 Cookie：先调用 login 工具（免 Cookie）传账号密码，取返回的 cookie 作为 Cookie 请求头。login 内部按 Auth.js 原生 JWT 格式签发，因此 requireAdmin 可直接识别；有效期 12 小时，改密后立即失效。工具错误以 result.isError=true 返回而非 HTTP 异常。",
+        "operationId": "mcpRpc",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "jsonrpc",
+                  "method"
+                ],
+                "properties": {
+                  "jsonrpc": {
+                    "type": "string",
+                    "const": "2.0",
+                    "description": "协议版本，固定 2.0"
+                  },
+                  "id": {
+                    "type": [
+                      "string",
+                      "integer",
+                      "null"
+                    ],
+                    "description": "请求标识，通知类请求可省略"
+                  },
+                  "method": {
+                    "type": "string",
+                    "description": "方法名",
+                    "enum": [
+                      "initialize",
+                      "ping",
+                      "tools/list",
+                      "tools/call",
+                      "notifications/initialized"
+                    ]
+                  },
+                  "params": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "方法参数；tools/call 时为 { name, arguments }"
+                  }
+                }
+              },
+              "example": {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {
+                  "name": "list_notices",
+                  "arguments": {
+                    "pageSize": 5
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Cookie",
+            "in": "header",
+            "description": "管理员会话 Cookie，形如 authjs.session-token=<value>；由 login 工具返回。HTTPS 部署时名字带 __Secure- 前缀",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JSON-RPC 响应。批量请求返回数组；通知类请求返回 202 且无响应体",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "jsonrpc": {
+                      "type": "string",
+                      "const": "2.0"
+                    },
+                    "id": {
+                      "type": [
+                        "string",
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "result": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "description": "成功结果；tools/call 时为 { content, structuredContent, isError? }"
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "只含通知类消息，按规范无响应体"
+          },
+          "400": {
+            "description": "请求体不是合法 JSON，返回 -32700"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "MCP"
+        ],
+        "summary": "不支持的服务端推送",
+        "description": "本服务不提供 SSE 推送流，GET 固定返回 405。",
+        "operationId": "mcpStreamUnsupported",
+        "security": [],
+        "responses": {
+          "405": {
+            "description": "固定返回 405，提示客户端只用 POST"
+          }
+        }
+      }
+    }
+  }
+}

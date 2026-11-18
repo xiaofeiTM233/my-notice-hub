@@ -56,7 +56,7 @@ ADMIN_INIT_PASSWORD=...    # 仅 seed 使用，可省略
 app/
   (site)/        访客列表与详情
   admin/         登录与后台（侧栏 + 顶栏）
-  api/           全部后端接口
+  api/           全部后端接口（含 MCP 端点 /api/mcp）
 components/      site / admin / editor / common / providers
 hooks/           取数、筛选同步、主题、提交
 lib/

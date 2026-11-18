@@ -133,6 +133,63 @@
 - **图片**：`picture`（协议相对地址补成 https）登记为外链媒体，媒体记录 `referer: https://www.gamekee.com/`，GameKee 图床缺来源页会返回 567。
 - **判重**：`extra.source=gamekee-ba` 加 `extra.cid`（接口 id），重复导入覆盖同一条。
 
+## MCP 端点
+
+`POST /api/mcp` 暴露一套 MCP（Model Context Protocol）工具，让 AI 客户端直接读写站点数据。无状态 JSON-RPC，不分配会话 ID、不提供服务端推送，客户端只用 POST 即可。
+
+### 鉴权
+
+鉴权完全复用管理员会话 Cookie，不另外签发令牌：
+
+1. 调用 `tools/call` 执行 `login`，传管理员用户名与密码（**这个工具不需要 Cookie**）；
+2. 取返回的 `cookie` 字段，后续请求把它原样作为请求头 `Cookie` 带给 `/api/mcp`。
+
+`login` 内部用 `next-auth/jwt` 的 `encode` 按 Auth.js 原生格式签发会话，载荷与 `auth.ts` 的 `jwt` 回调一致（含 `sv`），因此 `requireAdmin()` 可直接识别。会话有效期 12 小时，**管理员改密后所有旧 Cookie 立即失效**。登录失败受与后台登录相同的限流约束（同一用户名 10 分钟内 5 次）。
+
+> HTTPS 部署时 Cookie 名带 `__Secure-` 前缀，以登录响应下发的 `Set-Cookie` 为准。
+
+### 工具清单
+
+| 工具 | 类型 | 说明 |
+| :--- | :--- | :--- |
+| `login` | 免登录 | 用用户名密码换会话 Cookie，唯一不需要 Cookie 的工具 |
+| `whoami` | 只读 | 校验会话有效性 |
+| `list_notices` | 只读 | 分页查询，支持 `q` / `channel` / `priority` / `tag` / 时间区间 / 排序 |
+| `get_notice` | 只读 | 按 id 或唯一标题读详情（含附件与前后篇） |
+| `create_notice` | 写入 | 新建文章，`title` 与 `channel` 必填 |
+| `update_notice` | 写入 | 局部更新，只改传入字段 |
+| `delete_notice` | 写入 | 删除单篇 |
+| `delete_notices` | 写入 | 批量删除，上限 100 |
+| `list_channels` / `list_tags` | 只读 | 频道与标签统计 |
+| `list_media` / `get_media` | 只读 | 媒体列表与单条详情（含引用文章） |
+| `upload_media` | 写入 | 传 base64 内容上传，按哈希去重 |
+| `update_media` / `delete_media` | 写入 | 改元信息 / 删除（默认查引用，`force` 跳过） |
+| `list_import_adapters` | 只读 | 已注册适配器 |
+| `import_parse` / `import_commit` | 写入 | 解析预览 → 提交导入 |
+| `get_settings` / `update_settings` | 读/写 | 脱敏设置的读取与局部更新 |
+| `change_password` | 写入 | 改密，会使所有 Cookie 失效 |
+
+按 id 或标题定位文章时，标题必须唯一命中；匹配到多篇会报错并列出候选 id，避免误改。
+
+### 协议流程
+
+```bash
+# 1. 握手
+curl -X POST http://localhost:3000/api/mcp -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}'
+
+# 2. 登录拿 Cookie（不需要带 Cookie）
+curl -X POST http://localhost:3000/api/mcp -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"login","arguments":{"username":"admin","password":"<password>"}}}'
+
+# 3. 带 Cookie 调用工具
+curl -X POST http://localhost:3000/api/mcp -H 'content-type: application/json' \
+  -H 'cookie: authjs.session-token=<value>' \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_notices","arguments":{"pageSize":5}}}'
+```
+
+工具错误不抛 HTTP 异常，而是回 `result.isError: true` 且 `content[0].text` 为 `{ "error": "..." }`，便于模型自行修正后重试。
+
 ## curl 示例
 
 ```bash
