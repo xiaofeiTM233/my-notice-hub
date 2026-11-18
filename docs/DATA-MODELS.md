@@ -44,6 +44,7 @@
 | `format` | string | ✔ | 小写扩展名，白名单见设置 |
 | `name` | string | ✘ | 展示名 |
 | `author` | object | ✘ | `{ name?, avatar? }` |
+| `referer` | string | ✘ | 外链媒体经 `/api/media/{id}` 代理时附带的来源页，供校验 referer 的图床使用 |
 
 索引：`type + _id`。
 

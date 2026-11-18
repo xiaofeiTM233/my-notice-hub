@@ -1,6 +1,12 @@
 // components/admin/MediaLibrary.tsx
 'use client'
-import { CopyOutlined, DeleteOutlined, EditOutlined, InboxOutlined } from '@ant-design/icons'
+import {
+  CopyOutlined,
+  DeleteOutlined,
+  DownloadOutlined,
+  EditOutlined,
+  InboxOutlined,
+} from '@ant-design/icons'
 import {
   App,
   Button,
@@ -185,7 +191,7 @@ export function MediaLibrary() {
               </button>
               <div className="media-info">
                 <span className="media-name">{media.name || '未命名'}</span>
-                <span>
+                <span className="muted">
                   {media.format.toUpperCase()}
                   {media.size ? ` · ${formatBytes(media.size)}` : ''}
                 </span>
@@ -222,18 +228,32 @@ export function MediaLibrary() {
             <div className="drawer-preview">
               <MediaImage mediaId={preview.id} alt={preview.name || preview.format} fill sizes="380px" />
             </div>
-            <div className="detail-meta">
-              <span>格式：{preview.format.toUpperCase()}</span>
-              <span>类型：{MEDIA_TYPE_LABEL[preview.type]}</span>
-              {preview.size ? <span>大小：{formatBytes(preview.size)}</span> : null}
-            </div>
-            <div className="mono muted">{`/api/media/${preview.id}`}</div>
+            <dl className="drawer-facts">
+              <div>
+                <dt>格式</dt>
+                <dd>{preview.format.toUpperCase()}</dd>
+              </div>
+              <div>
+                <dt>存储类型</dt>
+                <dd>{MEDIA_TYPE_LABEL[preview.type]}</dd>
+              </div>
+              {preview.size ? (
+                <div>
+                  <dt>大小</dt>
+                  <dd>{formatBytes(preview.size)}</dd>
+                </div>
+              ) : null}
+              <div>
+                <dt>访问地址</dt>
+                <dd className="mono">{`/api/media/${preview.id}`}</dd>
+              </div>
+            </dl>
             <div className="row">
-              <Button icon={<CopyOutlined />} onClick={() => copyLink(preview)}>
+              <Button type="primary" icon={<CopyOutlined />} onClick={() => copyLink(preview)}>
                 复制链接
               </Button>
               <a href={`/api/media/${preview.id}?download=1`} target="_blank" rel="noreferrer">
-                <Button>下载原文件</Button>
+                <Button icon={<DownloadOutlined />}>下载原文件</Button>
               </a>
             </div>
           </div>

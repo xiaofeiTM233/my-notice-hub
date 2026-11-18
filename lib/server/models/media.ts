@@ -10,6 +10,8 @@ export interface IMedia {
   format: string
   name?: string
   author?: NoticeAuthor
+  // 外链媒体代理时附带的来源页，部分图床会校验
+  referer?: string
 }
 
 const authorSchema = new Schema<NoticeAuthor>(
@@ -27,6 +29,7 @@ const mediaSchema = new Schema<IMedia>(
     format: { type: String, required: true, trim: true, lowercase: true },
     name: { type: String, trim: true },
     author: { type: authorSchema, default: undefined },
+    referer: { type: String, trim: true, default: undefined },
   },
   { versionKey: false },
 )

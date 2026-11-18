@@ -23,8 +23,11 @@
 | `npm run smoke` | API 冒烟，需要服务在跑且已 seed，见下方环境变量 |
 | `npm run admin:check -- <密码>` | 校验数据库连接、单例设置与管理员密码是否匹配 |
 | `npm run import:zmd-archive -- [--dry-run] [--dir <目录>] [--limit N] [--skip-existing]` | 导入 [endfield-archive-library](https://github.com/BiologyHazard/endfield-archive-library) 的 `bulletin/detail` 归档公告 |
+| `npm run import:gamekee-ba -- [--limit N] [--dry-run] [--skip-existing]` | 导入 GameKee 蔚蓝档案活动列表（频道 `ba`），默认按页翻完全部 999 条 |
 
 归档导入默认走 GitHub 的 `contents` 接口列目录、`raw.githubusercontent.com` 逐个下载（失败回退 jsDelivr）；`--dir` 可指向本地克隆的 `https/game-hub.hypergryph.com/bulletin/detail` 目录，避免网络请求。导入复用 `zmd` 适配器的字段映射与图片登记（频道 `zmd`，图转外链媒体），默认按 `extra.source + extra.cid` 覆盖已存在的公告，`--skip-existing` 可改成跳过；`--dry-run` 只解析不写库。
+
+蔚蓝档案活动同理复用 `gamekee-ba` 适配器：导入页默认只拉最近 50 条做增量，首次全量用 `npm run import:gamekee-ba -- --limit 999`；封面登记的媒体带 `referer: https://www.gamekee.com/`，否则图床拒绝访问。
 
 ## 环境变量
 

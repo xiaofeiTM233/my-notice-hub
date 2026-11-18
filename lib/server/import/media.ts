@@ -12,6 +12,8 @@ export interface NoticeMediaOptions {
   author: { name: string }
   // 日志前缀，便于区分是哪个适配器在登记图片
   warningLabel: string
+  // 外链媒体代理时带上的来源页，部分图床会校验
+  referer?: string
   // 命中时把正文首图作为封面并从正文移除（如聚合接口的图片频道）
   coverFromBody?: (notice: NoticeInput) => boolean
 }
@@ -37,7 +39,11 @@ function mediaName(title: string, suffix: string): string {
 }
 
 // 公告图片统一以外部链接媒体登记，不转存字节，由 /api/media/{id} 代理访问
-async function registerMedia(url: string, name: string, author: { name: string }): Promise<string> {
+async function registerMedia(
+  url: string,
+  name: string,
+  options: Pick<NoticeMediaOptions, 'author' | 'referer'>,
+): Promise<string> {
   const existing = await Media.findOne({ type: 'url', src: url }, { _id: 1 }).lean<{
     _id: unknown
   } | null>()
@@ -48,21 +54,22 @@ async function registerMedia(url: string, name: string, author: { name: string }
     src: url,
     format: formatFromFilename(new URL(url).pathname),
     name,
-    author,
+    author: options.author,
+    referer: options.referer,
   })
   return String(doc._id)
 }
 
-function createResolver(author: { name: string }, warningLabel: string): ResolveMedia {
+function createResolver(options: NoticeMediaOptions): ResolveMedia {
   // 同一张图在整批里只登记一次，并复用进行中的任务
   const cache = new Map<string, Promise<string | null>>()
   return (url, name) => {
     const cached = cache.get(url)
     if (cached) return cached
 
-    const task = registerMedia(url, name, author).catch((error: unknown) => {
+    const task = registerMedia(url, name, options).catch((error: unknown) => {
       // 单张图片失败不阻断导入，正文保留原始外链
-      console.warn(`${warningLabel} 图片登记媒体失败，正文保留外链`, url, error)
+      console.warn(`${options.warningLabel} 图片登记媒体失败，正文保留外链`, url, error)
       return null
     })
     cache.set(url, task)
@@ -113,6 +120,6 @@ export async function attachNoticeMedia(
   payload: NoticeInput[],
   options: NoticeMediaOptions,
 ): Promise<NoticeInput[]> {
-  const resolve = createResolver(options.author, options.warningLabel)
+  const resolve = createResolver(options)
   return Promise.all(payload.map((notice) => attachOne(notice, resolve, options)))
 }

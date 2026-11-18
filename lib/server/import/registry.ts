@@ -1,5 +1,6 @@
 // lib/server/import/registry.ts
 import 'server-only'
+import { gamekeeBaImportAdapter } from './adapters/gamekee-ba'
 import { zmdImportAdapter } from './adapters/zmd'
 import { zmdWebImportAdapter } from './adapters/zmd-web'
 import type { NoticeInput } from '@/lib/shared/contracts/notice'
@@ -23,7 +24,11 @@ export interface ImportAdapter {
 }
 
 // 新增适配器：在同目录实现 ImportAdapter，再 push 进 importAdapters 即可，导入接口会自动列出。
-export const importAdapters: ImportAdapter[] = [zmdImportAdapter, zmdWebImportAdapter]
+export const importAdapters: ImportAdapter[] = [
+  zmdImportAdapter,
+  zmdWebImportAdapter,
+  gamekeeBaImportAdapter,
+]
 
 export function getImportAdapter(id: string): ImportAdapter | undefined {
   return importAdapters.find((adapter) => adapter.id === id)

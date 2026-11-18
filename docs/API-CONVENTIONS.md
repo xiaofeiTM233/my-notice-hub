@@ -79,7 +79,7 @@
 | POST | `/api/admin/media` | `multipart/form-data`，字段 `file`、可选 `author` |
 | PATCH | `/api/admin/media/{id}` | `{ name?, author? }` |
 | DELETE | `/api/admin/media/{id}` | `?force=1` 忽略引用检查 |
-| GET | `/api/admin/import/adapters` | 已注册适配器：`zmd`（聚合接口）、`zmd-web`（官网公告） |
+| GET | `/api/admin/import/adapters` | 已注册适配器：`zmd`（聚合接口）、`zmd-web`（官网公告）、`gamekee-ba`（蔚蓝档案活动） |
 | POST | `/api/admin/import/parse` | `multipart/form-data`：`adapter` + `file` → 预览；远程适配器可省略 `file` |
 | POST | `/api/admin/import/commit` | `{ jobId, channel?, duplicate: 'skip' \| 'overwrite' }` |
 | GET | `/api/admin/settings` | 脱敏后的设置 |
@@ -122,6 +122,15 @@
 - **取数**：列表 `https://web-news.hypergryph.com/api/bulletin?lang=zh-cn&code=endfield_web&page=n&pageSize=20` 按 `total` 翻页，再逐条请求 `/api/bulletin/{cid}?lang=zh-cn&code=endfield_web` 取正文 HTML（并发 6，单条失败只丢正文）。
 - **映射**：`channel` 固定 `zmd`，`tags` 固定 `终末地·官网`，`author.name` 固定 `终末地·游戏`，`timestamp` 取 `displayTime`，置顶 `sticky` 记 `high`，`summary` 取 `brief`，`extra` 保留 `cid / tab / sticky`。
 - **图片**：列表 `cover` 与正文图片同样登记为外链媒体；封面图同时出现在正文时从正文移除，避免详情页重复。
+
+### 蔚蓝档案活动导入（adapter=gamekee-ba）
+
+- **取数**：`https://www.gamekee.com/v1/activity/page-list?sort=-1&limit=N&page_no=P`，请求头 `game-alias: ba`、`Lang: zh-cn`。向导默认最近 50 条用于日常增量，全量用 `npm run import:gamekee-ba`（默认 5000，按页翻完）。
+- **上限**：该接口单次最多 999 条，且服务端只保留最近 999 条（`total` 恒为 999，`page_total` 与 `limit` 相乘不超过 999，升序与降序返回同一批 id，早于 2025-02-19 的记录关键词也搜不到）。适配器会按 `page_total` 翻页，翻到底仍只有 999 条；2021~2024 年的活动只存在于 wiki 文档「日服往期活动一览」，本适配器不覆盖。
+- **映射**：`channel` 固定 `ba`，`author.name` 固定 `蔚蓝档案`，`timestamp` 取 `begin_at`；`summary` 优先取 `description`，缺省时写成活动时间；正文为活动时间、描述段落与「查看活动详情」外链。
+- **标签**：`蔚蓝档案·{pub_area}` 与 `activity_kind_name` 各成一个标签，例如 `蔚蓝档案·日服`、`战术测试`。
+- **图片**：`picture`（协议相对地址补成 https）登记为外链媒体，媒体记录 `referer: https://www.gamekee.com/`，GameKee 图床缺来源页会返回 567。
+- **判重**：`extra.source=gamekee-ba` 加 `extra.cid`（接口 id），重复导入覆盖同一条。
 
 ## curl 示例
 

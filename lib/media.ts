@@ -298,7 +298,8 @@ export async function readMedia(media: IMedia): Promise<{ buffer: Buffer; mime: 
     return { buffer: Buffer.from(media.src.replace(/^data:[^;]+;base64,/, ''), 'base64'), mime }
   }
   if (media.type === 'url') {
-    const result = await fetchBuffer(media.src)
+    // 部分图床校验来源页，媒体上的 referer 供代理请求带上
+    const result = await fetchBuffer(media.src, media.referer)
     return { buffer: result.buffer, mime: result.contentType ?? mime }
   }
 
@@ -359,7 +360,10 @@ async function assertPublicUrl(url: URL): Promise<void> {
   }
 }
 
-async function fetchBuffer(source: string): Promise<{ buffer: Buffer; contentType: string | null }> {
+async function fetchBuffer(
+  source: string,
+  referer?: string,
+): Promise<{ buffer: Buffer; contentType: string | null }> {
   let current = new URL(source)
 
   for (let hop = 0; hop < 3; hop += 1) {
@@ -368,6 +372,7 @@ async function fetchBuffer(source: string): Promise<{ buffer: Buffer; contentTyp
       redirect: 'manual',
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       cache: 'no-store',
+      headers: referer ? { referer } : undefined,
     })
 
     if (response.status >= 300 && response.status < 400) {
