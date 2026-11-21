@@ -11,6 +11,13 @@ export interface ImportSource {
   buffer: Buffer
 }
 
+export interface ImportParseOptions {
+  // 单次最多处理条数，缺省时由适配器自行决定
+  limit?: number
+  // 已入库的来源 cid，远程适配器据此跳过详情请求，避免每日全量抓取
+  skipCids?: string[]
+}
+
 export interface ImportAdapter {
   id: string
   label: string
@@ -18,7 +25,7 @@ export interface ImportAdapter {
   // 远程适配器自行从来源接口取数，导入时不需要上传文件，source 缺省
   remote?: boolean
   description?: string
-  parse(source?: ImportSource): Promise<unknown[]>
+  parse(source?: ImportSource, options?: ImportParseOptions): Promise<unknown[]>
   // 写入前把正文外链资源落成媒体，需按相同顺序返回等长数组；预览阶段不调用
   materialize?(payload: NoticeInput[]): Promise<NoticeInput[]>
 }

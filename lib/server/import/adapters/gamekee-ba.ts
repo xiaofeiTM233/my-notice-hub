@@ -3,7 +3,7 @@ import 'server-only'
 import { badRequest, upstreamError } from '@/lib/server/errors'
 import type { NoticeInput } from '@/lib/shared/contracts/notice'
 import { attachNoticeMedia } from '../media'
-import type { ImportAdapter, ImportSource } from '../registry'
+import type { ImportAdapter, ImportParseOptions, ImportSource } from '../registry'
 
 const CHANNEL = 'ba'
 const AUTHOR_NAME = '蔚蓝档案'
@@ -204,9 +204,9 @@ export const gamekeeBaImportAdapter: ImportAdapter = {
   remote: true,
   description: '实时读取 GameKee 活动列表，默认最近 50 条；全量用 npm run import:gamekee-ba（按页翻完）',
 
-  async parse(source?: ImportSource): Promise<unknown[]> {
+  async parse(source?: ImportSource, options?: ImportParseOptions): Promise<unknown[]> {
     if (source) throw badRequest('该适配器直接读取 GameKee 接口，无需上传文件')
-    return fetchGamekeeActivities()
+    return fetchGamekeeActivities(options?.limit)
   },
 
   async materialize(payload: NoticeInput[]): Promise<NoticeInput[]> {

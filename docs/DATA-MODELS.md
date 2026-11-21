@@ -67,6 +67,11 @@
 | `media.maxUploadSize` | number | 默认 4 MiB（Vercel 请求体上限） |
 | `media.allowedFormats` | string[] | 默认 png/jpg/jpeg/webp/gif/svg/pdf/zip/docx/xlsx/mp4 |
 | `media.vercelToken` 等凭证字段 | string | 按类型取用；接口只回 `set + 末四位掩码` |
+| `autoImport.enabled` | boolean | 是否参与每日定时导入，默认 `false` |
+| `autoImport.adapters` | string[] | 参与的远程适配器 id，默认空 |
+| `autoImport.limit` | number | 单次每来源最多处理条数，默认 30，上限 200 |
+| `autoImport.duplicate` | enum | `skip / overwrite`，默认 `skip` |
+| `autoImport.lockAt` | number | 运行锁时间戳，5 分钟 TTL，仅用于防止定时与手动并发 |
 
 初始化：首次登录请求发现文档缺失时由 `lib/server/bootstrap.ts` 的 `ensureSetting()` 写入该文档。默认密码在 `lib/shared/constants.ts` 的 `DEFAULT_ADMIN_PASSWORD`，可用环境变量 `ADMIN_INIT_PASSWORD` 覆盖；已有文档时不会覆盖密码。**首次登录后请立即在「设置 → 账号」修改。**
 

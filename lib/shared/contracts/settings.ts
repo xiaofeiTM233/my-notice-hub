@@ -1,6 +1,10 @@
 // lib/shared/contracts/settings.ts
 import { z } from 'zod'
-import { MEDIA_TYPES, UPLOAD_MAX_BYTES } from '@/lib/shared/constants'
+import {
+  AUTO_IMPORT_MAX_LIMIT,
+  MEDIA_TYPES,
+  UPLOAD_MAX_BYTES,
+} from '@/lib/shared/constants'
 
 export const settingsPatchSchema = z.object({
   admin: z
@@ -14,6 +18,14 @@ export const settingsPatchSchema = z.object({
       maxUploadSize: z.number().int().min(1024).max(UPLOAD_MAX_BYTES).optional(),
       allowedFormats: z.array(z.string().trim().min(1).max(12)).min(1).max(30).optional(),
       credentials: z.record(z.string(), z.string().nullable()).optional(),
+    })
+    .optional(),
+  autoImport: z
+    .object({
+      enabled: z.boolean().optional(),
+      adapters: z.array(z.string().trim().min(1).max(60)).max(20).optional(),
+      limit: z.number().int().min(1).max(AUTO_IMPORT_MAX_LIMIT).optional(),
+      duplicate: z.enum(['skip', 'overwrite']).optional(),
     })
     .optional(),
 })

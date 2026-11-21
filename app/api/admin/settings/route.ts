@@ -3,7 +3,9 @@ import type { NextRequest } from 'next/server'
 import { withApi } from '@/lib/server/respond'
 import { readJson } from '@/lib/server/params'
 import { requireAdmin } from '@/lib/server/guard'
+import { badRequest } from '@/lib/server/errors'
 import { settingsPatchSchema } from '@/lib/shared/contracts/settings'
+import { importAdapters } from '@/lib/server/import/registry'
 import { STORAGE_CREDENTIAL_KEYS } from '@/lib/shared/constants'
 import { Setting } from '@/lib/server/models/setting'
 import { clearSettingCache, getSetting } from '@/lib/server/setting-store'
@@ -36,6 +38,21 @@ export const PATCH = withApi(async (request: NextRequest) => {
       continue
     }
     set[`media.${key}`] = value
+  }
+
+  if (patch.autoImport?.enabled !== undefined) set['autoImport.enabled'] = patch.autoImport.enabled
+  if (patch.autoImport?.adapters !== undefined) {
+    // 只有远程适配器能被定时拉取，写库前先过滤掉未知或非远程的标识
+    const remoteIds = new Set(
+      importAdapters.filter((adapter) => adapter.remote).map((adapter) => adapter.id),
+    )
+    const unknown = patch.autoImport.adapters.filter((id) => !remoteIds.has(id))
+    if (unknown.length > 0) throw badRequest(`不支持自动导入的来源：${unknown.join('、')}`)
+    set['autoImport.adapters'] = [...new Set(patch.autoImport.adapters)]
+  }
+  if (patch.autoImport?.limit !== undefined) set['autoImport.limit'] = patch.autoImport.limit
+  if (patch.autoImport?.duplicate !== undefined) {
+    set['autoImport.duplicate'] = patch.autoImport.duplicate
   }
 
   if (Object.keys(set).length > 0 || Object.keys(unset).length > 0) {

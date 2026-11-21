@@ -1,6 +1,10 @@
 // lib/server/models/setting.ts
 import { Schema, model, models, type Model } from 'mongoose'
-import { MEDIA_TYPES, type MediaType } from '@/lib/shared/constants'
+import {
+  AUTO_IMPORT_DEFAULT_LIMIT,
+  MEDIA_TYPES,
+  type MediaType,
+} from '@/lib/shared/constants'
 
 export interface SettingAdmin {
   username: string
@@ -29,10 +33,20 @@ export interface SettingMedia {
   edgeoneStoreName?: string
 }
 
+export interface SettingAutoImport {
+  enabled: boolean
+  adapters: string[]
+  limit: number
+  duplicate: 'skip' | 'overwrite'
+  // 运行锁时间戳，避免定时任务与手动运行并发写入
+  lockAt?: number
+}
+
 export interface ISetting {
   _id: string
   admin: SettingAdmin
   media: SettingMedia
+  autoImport: SettingAutoImport
 }
 
 const adminSchema = new Schema<SettingAdmin>(
@@ -68,11 +82,23 @@ const mediaSchema = new Schema<SettingMedia>(
   { _id: false },
 )
 
+const autoImportSchema = new Schema<SettingAutoImport>(
+  {
+    enabled: { type: Boolean, required: true, default: false },
+    adapters: { type: [String], default: [] },
+    limit: { type: Number, required: true, default: AUTO_IMPORT_DEFAULT_LIMIT },
+    duplicate: { type: String, enum: ['skip', 'overwrite'], required: true, default: 'skip' },
+    lockAt: { type: Number },
+  },
+  { _id: false },
+)
+
 const settingSchema = new Schema<ISetting>(
   {
     _id: { type: String, default: 'singleton' },
     admin: { type: adminSchema, required: true },
     media: { type: mediaSchema, required: true },
+    autoImport: { type: autoImportSchema, required: true, default: () => ({}) },
   },
   { versionKey: false },
 )

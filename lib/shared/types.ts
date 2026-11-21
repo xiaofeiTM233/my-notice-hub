@@ -68,6 +68,13 @@ export interface StorageFieldState {
   hint: string
 }
 
+export interface AutoImportSettingDto {
+  enabled: boolean
+  adapters: string[]
+  limit: number
+  duplicate: 'skip' | 'overwrite'
+}
+
 export interface SettingDto {
   admin: {
     username: string
@@ -79,6 +86,7 @@ export interface SettingDto {
     allowedFormats: string[]
     credentials: Record<string, StorageFieldState>
   }
+  autoImport: AutoImportSettingDto
 }
 
 export interface ImportAdapterInfo {
@@ -93,6 +101,20 @@ export interface ImportInvalidDto {
   index: number
   path: string
   message: string
+}
+
+export interface ImportRunAdapterReportDto {
+  adapter: string
+  label: string
+  inserted: number
+  skipped: number
+  failed: number
+  error?: string
+}
+
+export interface ImportRunReportDto {
+  ran: boolean
+  adapters: ImportRunAdapterReportDto[]
 }
 
 export interface ImportPreviewDto {

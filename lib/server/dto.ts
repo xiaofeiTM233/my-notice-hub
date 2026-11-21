@@ -1,10 +1,12 @@
 // lib/server/dto.ts
 import 'server-only'
 import sanitizeHtml from 'sanitize-html'
-import type { ISetting, SettingMedia } from './models/setting'
+import type { ISetting, SettingAutoImport, SettingMedia } from './models/setting'
+import { AUTO_IMPORT_DEFAULT_LIMIT } from '@/lib/shared/constants'
 import type { INotice } from './models/notice'
 import type { IMedia } from './models/media'
 import type {
+  AutoImportSettingDto,
   MediaDto,
   NoticeAuthorDto,
   NoticeDetailDto,
@@ -166,5 +168,16 @@ export function toSettingDto(setting: ISetting): SettingDto {
         edgeoneStoreName: maskSecret(media.edgeoneStoreName),
       },
     },
+    autoImport: toAutoImportDto(setting.autoImport),
+  }
+}
+
+// 老库文档缺少 autoImport 字段，读取时补齐默认值
+function toAutoImportDto(value?: SettingAutoImport): AutoImportSettingDto {
+  return {
+    enabled: value?.enabled ?? false,
+    adapters: value?.adapters ?? [],
+    limit: value?.limit ?? AUTO_IMPORT_DEFAULT_LIMIT,
+    duplicate: value?.duplicate ?? 'skip',
   }
 }

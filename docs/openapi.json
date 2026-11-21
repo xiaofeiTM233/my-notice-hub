@@ -60,6 +60,11 @@
         "in": "cookie",
         "name": "authjs.session-token",
         "description": "Auth.js JWT 会话 Cookie。通过 `POST /api/auth/callback/credentials` 登录后由服务端下发，有效期 12 小时。HTTPS 环境下 Cookie 名带 `__Secure-` 前缀。"
+      },
+      "cronSecret": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "配置 `CRON_SECRET` 后，Vercel Cron 会自动带上 `Authorization: Bearer $CRON_SECRET`；未配置时放行带 Vercel Cron 标记头的请求。"
       }
     },
     "parameters": {
@@ -1113,7 +1118,8 @@
         "description": "脱敏后的站点设置",
         "required": [
           "admin",
-          "media"
+          "media",
+          "autoImport"
         ],
         "properties": {
           "admin": {
@@ -1164,12 +1170,15 @@
                 }
               }
             }
+          },
+          "autoImport": {
+            "$ref": "#/components/schemas/AutoImportSetting"
           }
         }
       },
       "SettingsPatchInput": {
         "type": "object",
-        "description": "站点设置局部更新。两组都可选，未出现的字段保持不变",
+        "description": "站点设置局部更新。三组都可选，未出现的字段保持不变",
         "properties": {
           "admin": {
             "type": "object",
@@ -1216,6 +1225,9 @@
                 }
               }
             }
+          },
+          "autoImport": {
+            "$ref": "#/components/schemas/AutoImportPatchInput"
           }
         },
         "example": {
@@ -1508,6 +1520,122 @@
           "changed": {
             "type": "boolean",
             "description": "固定为 true"
+          }
+        }
+      },
+      "AutoImportSetting": {
+        "type": "object",
+        "description": "自动导入配置",
+        "required": [
+          "enabled",
+          "adapters",
+          "limit",
+          "duplicate"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "是否参与每日定时导入"
+          },
+          "adapters": {
+            "type": "array",
+            "description": "参与的远程适配器 id，仅在 GET /api/admin/import/adapters 中 remote 为 true 的适配器可选",
+            "items": {
+              "type": "string"
+            }
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "description": "单次每来源最多处理条数"
+          },
+          "duplicate": {
+            "type": "string",
+            "enum": [
+              "skip",
+              "overwrite"
+            ],
+            "description": "遇到已存在文章时的处理方式"
+          }
+        }
+      },
+      "AutoImportPatchInput": {
+        "type": "object",
+        "description": "自动导入配置局部更新",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "adapters": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "非远程适配器或未注册 id 会返回 400"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200
+          },
+          "duplicate": {
+            "type": "string",
+            "enum": [
+              "skip",
+              "overwrite"
+            ]
+          }
+        }
+      },
+      "ImportRunAdapterReport": {
+        "type": "object",
+        "required": [
+          "adapter",
+          "label",
+          "inserted",
+          "skipped",
+          "failed"
+        ],
+        "properties": {
+          "adapter": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "inserted": {
+            "type": "integer"
+          },
+          "skipped": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          },
+          "error": {
+            "type": "string",
+            "description": "该来源执行失败时的错误信息"
+          }
+        }
+      },
+      "ImportRunReport": {
+        "type": "object",
+        "description": "一次自动导入的执行结果，不落库",
+        "required": [
+          "ran",
+          "adapters"
+        ],
+        "properties": {
+          "ran": {
+            "type": "boolean",
+            "description": "false 表示自动导入未启用，本次没有执行"
+          },
+          "adapters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportRunAdapterReport"
+            }
           }
         }
       }
@@ -3886,6 +4014,160 @@
         "responses": {
           "405": {
             "description": "固定返回 405，提示客户端只用 POST"
+          }
+        }
+      }
+    },
+    "/api/admin/import/run": {
+      "post": {
+        "tags": [
+          "后台-导入"
+        ],
+        "summary": "立即执行自动导入",
+        "description": "使用「设置 → 自动导入」中已保存的来源、条数与判重方式执行一次，不受 enabled 开关限制。已有任务在运行时返回 `CONFLICT`。",
+        "operationId": "adminRunAutoImport",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "执行完成",
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ImportRunReport"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  },
+                  "example": {
+                    "ok": true,
+                    "data": {
+                      "ran": true,
+                      "adapters": [
+                        {
+                          "adapter": "zmd-web",
+                          "label": "终末地官网公告",
+                          "inserted": 3,
+                          "skipped": 27,
+                          "failed": 0
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "requestId": "8f0f0d0e-1a2b-4c3d-9e8f-7a6b5c4d3e2f",
+                      "tookMs": 8600
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/cron/import": {
+      "get": {
+        "tags": [
+          "定时任务"
+        ],
+        "summary": "每日自动导入",
+        "description": "Vercel Cron 每天 01:00 UTC（北京时间 09:00）调用，Hobby 套餐按小时精度执行。配置 `CRON_SECRET` 后需带 `Authorization: Bearer $CRON_SECRET`（Vercel 会自动带上）；未配置时使用进程内随机密钥，并放行带 `vercel-cron/1.0` 与 `x-vercel-cron-schedule` 头的调度请求。自动导入未启用时返回 `ran: false`。",
+        "operationId": "cronImport",
+        "security": [
+          {
+            "cronSecret": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "执行完成",
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/XRequestId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ImportRunReport"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  },
+                  "example": {
+                    "ok": true,
+                    "data": {
+                      "ran": true,
+                      "adapters": [
+                        {
+                          "adapter": "zmd-web",
+                          "label": "终末地官网公告",
+                          "inserted": 3,
+                          "skipped": 27,
+                          "failed": 0
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "requestId": "8f0f0d0e-1a2b-4c3d-9e8f-7a6b5c4d3e2f",
+                      "tookMs": 8600
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
           }
         }
       }

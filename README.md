@@ -50,6 +50,8 @@ ADMIN_INIT_PASSWORD=...    # 仅首次登录初始化使用，可省略
 | `npm run import:gamekee-ba` | 导入 GameKee 蔚蓝档案活动，默认全量 999 条 |
 | `npm run dedupe:media` | 按内容哈希合并重复媒体并改写引用 |
 
+每日自动导入在后台「设置 → 自动导入」开启，线上由 `vercel.json` 的 cron 每天 01:00 UTC 调用 `/api/cron/import`；建议配置 `CRON_SECRET`，未配置时放行 Vercel Cron 的调度标记请求。详见 `docs/DEVELOPMENT.md`。
+
 ## 目录
 
 ```text

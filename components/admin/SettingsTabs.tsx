@@ -5,6 +5,7 @@ import { signOut } from 'next-auth/react'
 import { useState } from 'react'
 import { ErrorState } from '@/components/common/ErrorState'
 import { PageHeader } from '@/components/common/PageHeader'
+import { AutoImportSettings } from '@/components/admin/AutoImportSettings'
 import { useApiQuery } from '@/hooks/useApiQuery'
 import { apiFetch } from '@/lib/client/api'
 import {
@@ -314,11 +315,16 @@ function SettingsContent({ data, refresh }: { data: SettingDto; refresh: () => v
 
   return (
     <div className="admin-page">
-      <PageHeader title="设置" description="账号与媒体存储配置，均只对本站生效。" />
+      <PageHeader title="设置" description="账号、媒体存储与自动导入配置，均只对本站生效。" />
       <Tabs
         items={[
           { key: 'account', label: '账号', children: accountTab },
           { key: 'storage', label: '媒体存储', children: storageTab },
+          {
+            key: 'auto-import',
+            label: '自动导入',
+            children: <AutoImportSettings autoImport={data.autoImport} onSaved={refresh} />,
+          },
         ]}
       />
     </div>

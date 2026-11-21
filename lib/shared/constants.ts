@@ -92,6 +92,8 @@ export const MAX_PAGE_SIZE = 60
 export const MAX_TAGS_PER_NOTICE = 8
 
 export const UPLOAD_MAX_BYTES = 4 * 1024 * 1024
+export const AUTO_IMPORT_DEFAULT_LIMIT = 30
+export const AUTO_IMPORT_MAX_LIMIT = 200
 export const BASE64_MAX_BYTES = 512 * 1024
 export const DEFAULT_ALLOWED_FORMATS = [
   'png',
