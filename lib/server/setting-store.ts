@@ -13,17 +13,24 @@ export function clearSettingCache(): void {
   cached = null
 }
 
-export async function getSetting(): Promise<ISetting> {
+// 返回 null 表示尚未初始化，由首次登录请求补建；未命中不缓存，避免初始化后被一直当成缺失。
+export async function getSettingOrNull(): Promise<ISetting | null> {
   if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
     return cached.value
   }
 
   await dbConnect()
   const setting = await Setting.findById('singleton').lean<ISetting | null>()
-  if (!setting) {
-    throw internalError('站点尚未初始化，请先执行 npm run seed')
+  if (setting) {
+    cached = { value: setting, at: Date.now() }
   }
+  return setting
+}
 
-  cached = { value: setting, at: Date.now() }
+export async function getSetting(): Promise<ISetting> {
+  const setting = await getSettingOrNull()
+  if (!setting) {
+    throw internalError('站点尚未初始化，请重新提交一次登录完成初始化')
+  }
   return setting
 }

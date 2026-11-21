@@ -2,6 +2,8 @@
 
 > 状态：**定稿（待开工）**｜版本：v2｜已并入你对 11 个问题的全部裁决
 
+> 后续变更：初始化已改为首次登录请求时写入 `Setting`，`scripts/seed.ts` 与 `npm run seed` 已移除；下文保留原始规划以作追溯，实现以 `lib/server/bootstrap.ts` 与 `docs/DEVELOPMENT.md` 为准。
+
 ---
 
 ## 0. 结论摘要
@@ -11,7 +13,7 @@
 - **媒体**：六种存储（base64 / url / r2 / vercel / webdav / edgeone）全部收敛在**单个** `lib/media.ts`；对外只有 `/api/media/{id}`，任何响应体都不出现原始 `src`。
 - **导入**：适配器接口 + 注册表 + 三步向导全部就绪，已接入 `zmd`（聚合接口）与 `zmd-web`（官网公告）适配器，均支持实时拉取。
 - **数据**：你给的 2 个模型（通知 / 媒体）+ `Setting`（`_id: "singleton"`）+ `ImportJob`（导入暂存）。**不建日志集合、不做互动写入、不做 SEO**。
-- **部署**：Vercel。上传上限 4 MB（平台请求体限制），base64 单文件 512 KiB，seed 在本地对 Atlas 跑一次。
+- **部署**：Vercel。上传上限 4 MB（平台请求体限制），base64 单文件 512 KiB，初始化在首次登录请求时完成。
 
 ```text
 访客站 (client)                      管理后台 (client)
@@ -46,7 +48,7 @@
 | D8 | 媒体类型 | **补 `webdav`** | 六值：`base64/url/r2/vercel/webdav/edgeone` |
 | D9 | HTML 净化 | **允许 `sanitize-html`** | 渲染 HTML 正文前服务端净化，白名单见 §6.5 |
 | D10 | 日志与互动 | **全部移除** | 无 `Log` 集合、无审计 API、无 `/admin/logs`；出错只写服务端 `console.error` |
-| D11 | 初始化 | **seed 建 Setting（含默认密码）** | 无 bootstrap 接口、无初始化页；默认密码登录后自行修改 |
+| D11 | 初始化 | **首次登录建 Setting（含默认密码）** | 无 bootstrap 接口、无初始化页；默认密码登录后自行修改 |
 | D12 | SEO / 公开 | **不需要** | 公开页也按客户端渲染；`metadata` 静态写死；不生成 sitemap/robots |
 | D13 | 品牌 | **写死、无页脚** | 站名一个常量；沿用 `public/vercel.svg` 作 Logo/图标 |
 | D14 | 部署 | **Vercel** | 上传 ≤ 4 MB；base64 ≤ 512 KiB；限流为实例内存（弱）；seed 本地执行 |
@@ -78,7 +80,7 @@
 | clsx | ^2.1.1 | 类名拼接 |
 | dayjs | ^1.11.11 | 日期格式化（antd 同源） |
 | server-only | ^0.0.1 | 防止服务端模块进客户端包 |
-| tsx（dev） | ^4 | seed / 冒烟脚本 |
+| tsx（dev） | ^4 | 冒烟与导入脚本 |
 
 **不引入**：SWR / TanStack Query（自写 ~80 行 `useApiQuery`）、axios、lodash、next-themes（主题自写才能与 antd 算法同步）、sharp（不做缩略图）。
 
@@ -196,7 +198,7 @@ lib/
 
 docs/                            IMPLEMENTATION-PLAN / DATA-MODELS / API-CONVENTIONS /
                                  FRONTEND-SPEC / DEVELOPMENT
-scripts/                         seed.ts / smoke-api.ts
+scripts/                         smoke-api.ts / 导入与维护脚本
 public/                          vercel.svg（Logo/图标）、file.svg（空态配图）
 ```
 
@@ -265,7 +267,7 @@ public/                          vercel.svg（Logo/图标）、file.svg（空态
 | | `media.allowedFormats` | 默认 `png,jpg,jpeg,webp,gif,svg,pdf,zip,docx,xlsx,mp4` |
 | | `media.vercelToken` / `r2AccessKeyId` / `r2SecretAccessKey` / `r2Endpoint` / `r2Bucket` / `r2PublicUrl` / `webdavUrl` / `webdavUser` / `webdavPass` / `webdavBasePath` / `edgeoneToken` / `edgeoneProjectId` / `edgeoneStoreName` | 按类型取用；**GET 只回 `hasXxx` + 末四位掩码** |
 
-**初始化（D11）**：`npm run seed` upsert 该文档，密码取 `ADMIN_INIT_PASSWORD` 环境变量，缺省用约定的初始密码；`admin.passwordUpdatedAt` 与 `sessionVersion=0` 一并写入。没有 `/api/admin/bootstrap`，也没有初始化页。
+**初始化（D11）**：首次登录请求发现单例设置缺失时 upsert 该文档，密码取 `ADMIN_INIT_PASSWORD` 环境变量，缺省用约定的初始密码；`admin.passwordUpdatedAt` 与 `sessionVersion=0` 一并写入。没有 `/api/admin/bootstrap`，也没有初始化页。
 
 ### 4.4 ImportJob（导入暂存，过程模型）
 

@@ -68,7 +68,7 @@
 | `media.allowedFormats` | string[] | 默认 png/jpg/jpeg/webp/gif/svg/pdf/zip/docx/xlsx/mp4 |
 | `media.vercelToken` 等凭证字段 | string | 按类型取用；接口只回 `set + 末四位掩码` |
 
-初始化：`npm run seed` 写入该文档。默认密码在 `lib/shared/constants.ts` 的 `DEFAULT_ADMIN_PASSWORD`，可用环境变量 `ADMIN_INIT_PASSWORD` 覆盖；已有文档时不会覆盖密码。**首次登录后请立即在「设置 → 账号」修改。**
+初始化：首次登录请求发现文档缺失时由 `lib/server/bootstrap.ts` 的 `ensureSetting()` 写入该文档。默认密码在 `lib/shared/constants.ts` 的 `DEFAULT_ADMIN_PASSWORD`，可用环境变量 `ADMIN_INIT_PASSWORD` 覆盖；已有文档时不会覆盖密码。**首次登录后请立即在「设置 → 账号」修改。**
 
 ## import_jobs
 

@@ -27,7 +27,7 @@ async function main(): Promise<void> {
 
   const setting = await Setting.findById('singleton').lean()
   if (!setting) {
-    console.log('settings/singleton: 不存在 —— 先执行 npm run seed')
+    console.log('settings/singleton: 不存在 —— 提交一次登录请求即可自动创建')
     process.exitCode = 1
     return
   }

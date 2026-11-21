@@ -9,7 +9,7 @@ import {
   SESSION_MAX_AGE_SECONDS,
 } from '@/lib/shared/constants'
 import { verifyPassword } from '@/lib/server/auth-password'
-import { getSetting } from '@/lib/server/setting-store'
+import { ensureSetting } from '@/lib/server/bootstrap'
 import { rateLimit, resetRateLimit } from '@/lib/server/rate-limit'
 
 const credentialsSchema = z.object({
@@ -39,14 +39,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           throw new Error('登录尝试过于频繁，请稍后再试')
         }
 
-        const setting = await getSetting().catch((error: unknown) => {
-          console.warn('[auth] 读取站点设置失败：', error instanceof Error ? error.message : error)
+        // 首次登录请求顺带建立单例设置，之后不再重复写入。
+        const setting = await ensureSetting().catch((error: unknown) => {
+          console.warn('[auth] 站点设置不可用：', error instanceof Error ? error.message : error)
           return null
         })
-        if (!setting) {
-          console.warn('[auth] 站点设置不存在，先执行 npm run seed')
-          return null
-        }
+        if (!setting) return null
         if (username !== setting.admin.username) {
           console.warn(`[auth] 用户名不存在：${username}`)
           return null
