@@ -75,13 +75,13 @@ export const STORAGE_TYPE_FIELDS: Record<MediaType, StorageCredentialKey[]> = {
   edgeone: ['edgeoneToken', 'edgeoneProjectId', 'edgeoneStoreName'],
 }
 
-export const LIST_VIEWS = ['card', 'masonry', 'list'] as const
+export const LIST_VIEWS = ['card', 'list', 'feed'] as const
 export type ListView = (typeof LIST_VIEWS)[number]
 
 export const LIST_VIEW_LABEL: Record<ListView, string> = {
   card: '卡片',
-  masonry: '瀑布流',
   list: '列表',
+  feed: '动态流',
 }
 
 export const THEME_MODES = ['light', 'system', 'dark'] as const

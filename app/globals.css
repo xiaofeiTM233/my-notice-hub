@@ -682,21 +682,186 @@ img {
   margin: 0 1px;
 }
 
-/* ---------- 瀑布流 ---------- */
+/* ---------- 动态流视图 ---------- */
 
-.masonry {
-  columns: 3 260px;
-  column-gap: 20px;
+.notice-feed {
+  max-width: 660px;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
 }
 
-.masonry > * {
-  break-inside: avoid;
-  margin-bottom: 20px;
+.feed-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 16px 18px;
+  transition: background 0.15s ease;
 }
 
-.masonry .notice-card {
-  display: inline-flex;
+.feed-item + .feed-item {
+  border-top: 1px solid var(--border);
+}
+
+.feed-item:hover {
+  background: var(--surface-2);
+}
+
+.feed-avatar {
+  position: relative;
+  flex: none;
+  width: 46px;
+  height: 46px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface-2);
+}
+
+.feed-avatar img {
   width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.feed-avatar .media-fallback {
+  font-size: 18px;
+}
+
+.feed-avatar-text {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(120% 120% at 12% 0%, color-mix(in srgb, var(--brand) 18%, transparent), transparent 62%),
+    linear-gradient(135deg, var(--surface-2), var(--surface-3));
+  color: color-mix(in srgb, var(--brand) 58%, var(--text-3));
+  font-size: 19px;
+  font-weight: 650;
+  user-select: none;
+}
+
+.feed-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.feed-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.feed-author {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 46%;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 14.5px;
+  font-weight: 650;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feed-channel,
+.feed-time {
+  flex: none;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+.feed-channel {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 30%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.feed-dot {
+  flex: none;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+
+.feed-title {
+  color: var(--text);
+  font-size: 15.5px;
+  font-weight: 620;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+  transition: color 0.15s ease;
+}
+
+.feed-item:hover .feed-title {
+  color: var(--brand);
+}
+
+.feed-summary {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  color: var(--text-2);
+  font-size: 13.5px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.feed-media {
+  position: relative;
+  margin-top: 4px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.feed-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.feed-item:hover .feed-media img {
+  transform: scale(1.02);
+}
+
+.feed-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-top: 3px;
+  color: var(--text-3);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.feed-foot-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.feed-tag {
+  color: var(--text-2);
 }
 
 /* ---------- 列表视图 ---------- */
@@ -840,6 +1005,15 @@ img {
 
 .skeleton-card {
   height: 268px;
+}
+
+.skeleton-feed {
+  height: 132px;
+  border-radius: 0;
+}
+
+.skeleton-feed + .skeleton-feed {
+  border-top: 1px solid var(--border);
 }
 
 .skeleton-cover {
@@ -1997,8 +2171,18 @@ input:-webkit-autofill,
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .masonry {
-    columns: 1;
+  .feed-item {
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .feed-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .feed-title {
+    font-size: 15px;
   }
 
   .notice-row-thumb {

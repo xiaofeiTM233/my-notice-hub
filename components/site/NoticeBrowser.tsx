@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/common/EmptyState'
 import { ErrorState } from '@/components/common/ErrorState'
 import { FilterPanel } from '@/components/site/FilterPanel'
 import { NoticeCard } from '@/components/site/NoticeCard'
+import { NoticeFeedItem } from '@/components/site/NoticeFeedItem'
 import { NoticeListRow } from '@/components/site/NoticeListRow'
 import { PaginationBar } from '@/components/site/PaginationBar'
 import { ViewSwitch } from '@/components/site/ViewSwitch'
@@ -42,11 +43,11 @@ export function NoticeBrowser() {
       )
     }
 
-    if (view === 'masonry') {
+    if (view === 'feed') {
       return (
-        <div className="masonry">
+        <div className="notice-feed">
           {items.map((notice) => (
-            <NoticeCard key={notice.id} notice={notice} />
+            <NoticeFeedItem key={notice.id} notice={notice} />
           ))}
         </div>
       )
@@ -98,11 +99,19 @@ export function NoticeBrowser() {
           {error ? <ErrorState message={error.message} onRetry={refresh} /> : null}
 
           {!error && loading ? (
-            <div className="notice-grid">
-              {Array.from({ length: 6 }).map((_, index) => (
-                <div key={index} className="skeleton-card skeleton-block" />
-              ))}
-            </div>
+            view === 'feed' ? (
+              <div className="notice-feed">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="skeleton-feed skeleton-block" />
+                ))}
+              </div>
+            ) : (
+              <div className="notice-grid">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div key={index} className="skeleton-card skeleton-block" />
+                ))}
+              </div>
+            )
           ) : null}
 
           {!error && !loading && items.length === 0 ? (

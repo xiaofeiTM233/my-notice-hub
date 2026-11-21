@@ -34,7 +34,15 @@ export const useUIStore = create<UIState>()(
     {
       name: 'notice-hub-ui',
       storage: createJSONStorage(() => localStorage),
-      version: 1,
+      version: 2,
+      // 瀑布流视图已下线，旧持久化值回落到卡片视图，避免切换器空白
+      migrate: (persistedState) => {
+        const state = persistedState as Partial<UIState>
+        if ((state.noticeView as string) === 'masonry') {
+          state.noticeView = 'card'
+        }
+        return state as UIState
+      },
     },
   ),
 )
