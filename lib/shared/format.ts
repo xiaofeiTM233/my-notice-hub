@@ -14,6 +14,8 @@ export function formatDate(seconds?: number | null, withTime = false): string {
 export function formatRelative(seconds?: number | null): string {
   if (!seconds) return '—'
   const diff = Math.floor(Date.now() / 1000) - seconds
+  // 活动公告以活动开始时间入库，未来时间要显示开始日期，不能按「刚刚」处理
+  if (diff < 0) return `${formatDate(seconds)} 开始`
   if (diff < 60) return '刚刚'
   if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`
   if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`
