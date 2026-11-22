@@ -57,18 +57,30 @@ interface NoticeFormValues {
 interface NoticeFormProps {
   mode: 'create' | 'edit'
   noticeId?: string
+  // 弹窗内嵌模式：隐藏页头并交由宿主决定关闭与保存后的去向
+  embedded?: boolean
+  onSaved?: (notice: NoticeDetailDto) => void
+  onCancel?: () => void
+  onDirtyChange?: (dirty: boolean) => void
 }
 
 type PickerTarget = 'cover' | 'entities' | 'avatar' | null
 
-export function NoticeForm({ mode, noticeId }: NoticeFormProps) {
+export function NoticeForm({
+  mode,
+  noticeId,
+  embedded,
+  onSaved,
+  onCancel,
+  onDirtyChange,
+}: NoticeFormProps) {
   const { data, loading, error, refresh } = useApiQuery<NoticeDetailResponse>(
     mode === 'edit' && noticeId ? `/api/admin/notices/${noticeId}` : null,
   )
 
   if (mode === 'edit' && loading && !data) {
     return (
-      <div className="admin-page">
+      <div className={embedded ? 'editor-embedded' : 'admin-page'}>
         <Skeleton active paragraph={{ rows: 10 }} />
       </div>
     )
@@ -76,23 +88,41 @@ export function NoticeForm({ mode, noticeId }: NoticeFormProps) {
 
   if (mode === 'edit' && error && !data) {
     return (
-      <div className="admin-page">
+      <div className={embedded ? 'editor-embedded' : 'admin-page'}>
         <ErrorState message={error.message} onRetry={refresh} />
       </div>
     )
   }
 
-  return <NoticeEditor mode={mode} noticeId={noticeId} notice={data} />
+  return (
+    <NoticeEditor
+      mode={mode}
+      noticeId={noticeId}
+      notice={data}
+      embedded={embedded}
+      onSaved={onSaved}
+      onCancel={onCancel}
+      onDirtyChange={onDirtyChange}
+    />
+  )
 }
 
 function NoticeEditor({
   mode,
   noticeId,
   notice,
+  embedded,
+  onSaved,
+  onCancel,
+  onDirtyChange,
 }: {
   mode: 'create' | 'edit'
   noticeId?: string
   notice: NoticeDetailResponse | null
+  embedded?: boolean
+  onSaved?: (notice: NoticeDetailDto) => void
+  onCancel?: () => void
+  onDirtyChange?: (dirty: boolean) => void
 }) {
   const router = useRouter()
   const { message } = App.useApp()
@@ -107,6 +137,10 @@ function NoticeEditor({
 
   const { data: channels } = useApiQuery<ChannelStat[]>('/api/channels')
   const { data: tags } = useApiQuery<TagStat[]>('/api/tags', { limit: 60 })
+
+  useEffect(() => {
+    onDirtyChange?.(dirty)
+  }, [dirty, onDirtyChange])
 
   useEffect(() => {
     if (!dirty) return
@@ -153,7 +187,9 @@ function NoticeEditor({
       )
       message.success(mode === 'create' ? '已创建' : '已保存')
       setDirty(false)
-      if (mode === 'create') {
+      if (onSaved) {
+        onSaved(saved)
+      } else if (mode === 'create') {
         router.replace(`/admin/notices/${saved.id}/edit`)
         router.refresh()
       }
@@ -162,6 +198,14 @@ function NoticeEditor({
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleCancel = () => {
+    if (onCancel) {
+      onCancel()
+      return
+    }
+    router.push('/admin/notices')
   }
 
   const handlePick = (media: MediaDto[]) => {
@@ -180,18 +224,20 @@ function NoticeEditor({
   }
 
   return (
-    <div className="admin-page">
-      <PageHeader
-        title={mode === 'create' ? '新建文章' : '编辑文章'}
-        description="正文支持 Markdown 与 HTML；图片会上传到当前媒体存储。"
-        extra={
-          mode === 'edit' && noticeId ? (
-            <Link href={`/notices/${noticeId}`} target="_blank">
-              <Button>前台预览</Button>
-            </Link>
-          ) : null
-        }
-      />
+    <div className={embedded ? 'editor-embedded' : 'admin-page'}>
+      {embedded ? null : (
+        <PageHeader
+          title={mode === 'create' ? '新建文章' : '编辑文章'}
+          description="正文支持 Markdown 与 HTML；图片会上传到当前媒体存储。"
+          extra={
+            mode === 'edit' && noticeId ? (
+              <Link href={`/notices/${noticeId}`} target="_blank">
+                <Button>前台预览</Button>
+              </Link>
+            ) : null
+          }
+        />
+      )}
 
       <Form<NoticeFormValues>
         form={form}
@@ -367,7 +413,7 @@ function NoticeEditor({
         </div>
 
         <div className="editor-actions">
-          <Button onClick={() => router.push('/admin/notices')}>取消</Button>
+          <Button onClick={handleCancel}>取消</Button>
           <Button
             type="primary"
             icon={<SaveOutlined />}

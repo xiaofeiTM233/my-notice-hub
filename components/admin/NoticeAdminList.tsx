@@ -7,13 +7,14 @@ import {
   ImportOutlined,
   PlusOutlined,
 } from '@ant-design/icons'
-import { App, Button, Grid, Table, Tag, type TableColumnsType } from 'antd'
+import { App, Button, Grid, Modal, Table, Tag, type TableColumnsType } from 'antd'
 import Link from 'next/link'
 import { useState } from 'react'
 import { EmptyState } from '@/components/common/EmptyState'
 import { ErrorState } from '@/components/common/ErrorState'
 import { MediaImage } from '@/components/common/MediaImage'
 import { NoticeFilterBar } from '@/components/admin/NoticeFilterBar'
+import { NoticeForm } from '@/components/admin/NoticeForm'
 import { PageHeader } from '@/components/common/PageHeader'
 import { useApiQuery } from '@/hooks/useApiQuery'
 import { useNoticeFilters } from '@/hooks/useNoticeFilters'
@@ -37,6 +38,39 @@ export function NoticeAdminList() {
   const { modal, message } = App.useApp()
   const { run, loading: submitting } = useSubmit()
   const [selectedKeys, setSelectedKeys] = useState<React.Key[]>([])
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingDirty, setEditingDirty] = useState(false)
+
+  const closeEditor = () => {
+    if (editingId === null) return
+    if (!editingDirty) {
+      setEditingId(null)
+      return
+    }
+    modal.confirm({
+      title: '放弃修改',
+      content: '当前文章还有未保存的改动，关闭后将丢失。',
+      okText: '放弃修改',
+      okButtonProps: { danger: true },
+      cancelText: '继续编辑',
+      onOk: () => setEditingId(null),
+    })
+  }
+
+  const handleEditorClosed = () => {
+    setEditingDirty(false)
+    setEditingId(null)
+    refresh()
+  }
+
+  // 组合键或中键保留链接的原生行为，用于另开窗口进入完整编辑页
+  const interceptEdit = (event: React.MouseEvent, notice: NoticeSummaryDto) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+      return
+    }
+    event.preventDefault()
+    setEditingId(notice.id)
+  }
 
   const handleDelete = (notice: NoticeSummaryDto) => {
     modal.confirm({
@@ -110,7 +144,11 @@ export function NoticeAdminList() {
       dataIndex: 'title',
       render: (_value, record) => (
         <div className="table-title">
-          <Link href={`/admin/notices/${record.id}/edit`} className="table-title-text">
+          <Link
+            href={`/admin/notices/${record.id}/edit`}
+            className="table-title-text"
+            onClick={(event) => interceptEdit(event, record)}
+          >
             {record.title}
           </Link>
           <div className="table-subtitle">{record.summary || '暂无摘要'}</div>
@@ -166,7 +204,10 @@ export function NoticeAdminList() {
       width: 160,
       render: (_value, record) => (
         <div className="row actions">
-          <Link href={`/admin/notices/${record.id}/edit`}>
+          <Link
+            href={`/admin/notices/${record.id}/edit`}
+            onClick={(event) => interceptEdit(event, record)}
+          >
             <Button size="small" type="text" icon={<EditOutlined />} aria-label="编辑" />
           </Link>
           <Button
@@ -260,6 +301,29 @@ export function NoticeAdminList() {
           onChange: (page, pageSize) => apply({ page, pageSize }),
         }}
       />
+
+      <Modal
+        open={editingId !== null}
+        title="编辑文章"
+        width="min(1180px, 96vw)"
+        style={{ top: 24 }}
+        styles={{ body: { maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' } }}
+        footer={null}
+        mask={{ closable: false }}
+        destroyOnHidden
+        onCancel={closeEditor}
+      >
+        {editingId ? (
+          <NoticeForm
+            mode="edit"
+            noticeId={editingId}
+            embedded
+            onCancel={closeEditor}
+            onSaved={handleEditorClosed}
+            onDirtyChange={setEditingDirty}
+          />
+        ) : null}
+      </Modal>
     </div>
   )
 }

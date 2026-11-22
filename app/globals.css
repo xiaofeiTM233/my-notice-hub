@@ -1833,6 +1833,36 @@ img {
   gap: 8px;
 }
 
+/* ---------- 弹窗编辑器 ---------- */
+
+.editor-embedded {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 弹窗高度有限，侧边栏不能沿用整页编辑器的吸顶定位 */
+.editor-embedded .editor-side {
+  position: static;
+}
+
+/* 操作条贴在滚动容器底部，长正文下无需回到顶部才能保存 */
+.editor-embedded .editor-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  justify-content: flex-end;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+@media (max-width: 1024px) {
+  .editor-embedded .editor-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .attachment-chips .attachment-item {
   padding: 4px 8px;
   font-size: 12px;
