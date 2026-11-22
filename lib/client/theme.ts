@@ -3,23 +3,27 @@
 import { theme, type ThemeConfig } from 'antd'
 
 export const FONT_STACK =
-  '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif'
+  '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif'
 
-// 组件配色与圆角都交给 antd 默认值，这里只统一中文字体与控件高度。
+// 圆角、字重与控件高度统一走 antd 刻度，避免自定义组件与 antd 组件观感分裂。
 export function buildAntdTheme(isDark: boolean): ThemeConfig {
   return {
     algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
     token: {
       fontFamily: FONT_STACK,
       fontSize: 14,
-      controlHeight: 36,
+      fontWeightStrong: 600,
+      controlHeight: 32,
+      borderRadius: 6,
+      borderRadiusLG: 8,
+      borderRadiusSM: 4,
     },
     components: {
       Layout: {
-        headerHeight: 56,
+        headerHeight: 64,
       },
       Menu: {
-        itemHeight: 38,
+        itemHeight: 40,
       },
     },
   }

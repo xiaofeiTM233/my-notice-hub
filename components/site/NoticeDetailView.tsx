@@ -59,7 +59,7 @@ export function NoticeDetailView({ noticeId }: { noticeId: string }) {
         </Link>
       </div>
 
-      <div className="detail-layout">
+      <div className={data.bodyFormat === 'markdown' ? 'detail-layout' : 'detail-layout single'}>
         <article className="detail-article">
           <h1 className="detail-title">{data.title}</h1>
 

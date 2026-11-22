@@ -7,24 +7,27 @@
 | 令牌 | 亮色 | 暗色 | 用途 |
 | :--- | :--- | :--- | :--- |
 | `--brand` | `#1677FF` | `#1677FF` | 自定义区域主色，与 antd 默认蓝一致 |
-| `--bg` | `#F6F7F9` | `#0A0C11` | 页面底色 |
-| `--surface` | `#FFFFFF` | `#11141B` | 卡片、面板 |
-| `--surface-2` | `#F1F3F7` | `#171B23` | 次级容器、代码块 |
-| `--border` | `#E4E7EC` | `#232833` | 分割线、卡片描边 |
-| `--text` / `--text-2` / `--text-3` | `#101828` / `#475467` / `#98A2B3` | `#E7EAF0` / `#A3ADBD` / `#6F7A8C` | 三级文字 |
-| `--priority-urgent` 等 | 红 / 橙 / 蓝 / 灰 | 提亮版本 | 优先级色点 |
+| `--bg` | `#F5F5F5` | `#000000` | 页面底色 |
+| `--surface` | `#FFFFFF` | `#141414` | 卡片、面板 |
+| `--surface-2` | `#FAFAFA` | `#1F1F1F` | 次级容器、代码块 |
+| `--surface-3` | `#F0F0F0` | `#262626` | 悬浮与占位 |
+| `--border` | `#F0F0F0` | `#303030` | 分割线、卡片描边 |
+| `--border-strong` | `#D9D9D9` | `#424242` | 悬停描边 |
+| `--text` / `--text-2` / `--text-3` | `rgba(0,0,0,.88)` / `.65` / `.45` | `rgba(255,255,255,.85)` / `.65` / `.45` | 三级文字 |
+| `--priority-urgent` 等 | `#FF4D4F` / `#FA8C16` / `#1677FF` / `#8C8C8C` | `#FF7875` / `#FFA940` / `#4096FF` / `#8C8C8C` | 优先级色点 |
 
-- antd 组件的配色、圆角与暗色映射全部使用默认值（`theme.defaultAlgorithm` / `darkAlgorithm`），`lib/client/theme.ts` 只覆盖中文字体与控件高度。
-- 自定义区域圆角：卡片/面板 14，详情封面 16，缩略图 7–9，标签胶囊 999。
-- 间距：4 的倍数，主用 8 / 12 / 16 / 24 / 32；页面横向留白 28（≤1024 为 22，移动 16）。
-- 字体：`PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans SC, system-ui`；正文 14/1.7，列表标题 27/650，详情标题 32/660。
-- 数字统一 `font-variant-numeric: tabular-nums`；动效 150–180ms，`prefers-reduced-motion` 下关闭位移与骨架动画。
+- antd 组件走 `theme.defaultAlgorithm` / `darkAlgorithm`，`lib/client/theme.ts` 显式对齐圆角、字重与控件高度：`borderRadius 6`、`borderRadiusLG 8`、`borderRadiusSM 4`、`fontWeightStrong 600`、`controlHeight 32`。
+- 自定义区域使用同一套刻度：表面（卡片/面板/封面）8，控件（按钮/输入/缩略图）6，标签与 chip 4，头像 50%。
+- 间距：4 的倍数，主用 8 / 12 / 16 / 24 / 32；页面横向留白 24（移动 16）。
+- 字体：`-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif`；正文 14，列表页标题 24/600，卡片与面板标题 16/600，详情标题 30/600，仅使用 400 / 600 两档字重。
+- 阴影取自 antd 的 tertiary / popup 层级，卡片默认平铺，仅在悬停时加轻阴影，不使用位移与图片缩放。
+- 自定义可点击元素补齐 `:focus-visible` 焦点环；数字统一 `font-variant-numeric: tabular-nums`；动效统一 200ms，`prefers-reduced-motion` 下关闭动画。
 
 ## 布局
 
-- 访客站：`.site-container` 最大 1240；顶栏 64 固定，含品牌标、主题开关与管理入口；列表页 `232px 筛选栏 + 内容`（≥1180），≤900 时筛选栏折叠为顶部卡片的横向 chip，卡片列数随 `auto-fill` 自适应。
-- 后台：`.admin-shell` 左侧 232（折叠 72）+ 顶部 58；内容区最宽 1440；`<900` 侧栏改为 `Drawer`，表格隐藏封面/标签/时间列并取消横向滚动。
-- 编辑页两栏：正文 1fr + 发布设置 300；详情页 `800px 正文 + 218px 目录`（<1180 隐藏目录）。
+- 访客站：`.site-container` 最大 1240；顶栏 64 固定，含品牌标、主题开关与管理入口；列表页 `240px 筛选栏 + 内容`（≥1180 为 208 + 32），≤900 时筛选栏折叠为顶部卡片的横向 chip，卡片列数随 `auto-fill` 自适应。
+- 后台：`.admin-shell` 左侧 240（折叠 72）+ 顶部 56；内容区最宽 1440 居中；`<900` 侧栏改为 `Drawer`，表格隐藏封面/标签/时间列并取消横向滚动。
+- 编辑页两栏：正文 1fr + 发布设置 300；详情页 `800px 正文 + 240px 目录` 居中，纯 HTML 公告单列居中（<1180 隐藏目录）。
 
 ## 主题
 

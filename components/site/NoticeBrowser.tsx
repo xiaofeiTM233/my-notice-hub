@@ -66,7 +66,6 @@ export function NoticeBrowser() {
     <div className="site-container">
       <div className="browse-head">
         <div>
-          <span className="hero-eyebrow">Notice Board</span>
           <h1 className="browse-title">全部公告</h1>
           <p className="browse-desc">
             共 <strong>{total}</strong> 条 · 按频道、优先级与时间快速定位
