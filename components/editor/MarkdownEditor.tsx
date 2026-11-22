@@ -2,10 +2,28 @@
 'use client'
 import 'md-editor-rt/lib/style.css'
 import { App } from 'antd'
-import { MdEditor } from 'md-editor-rt'
+import { MdEditor, XSSPlugin, config } from 'md-editor-rt'
 import { useThemeMode } from '@/hooks/useThemeMode'
 import { apiFetch } from '@/lib/client/api'
 import type { MediaDto } from '@/lib/shared/types'
+
+// 导入公告的正文是 HTML，编辑器需要开启原生 HTML 解析并走白名单清洗
+config({
+  markdownItConfig: (md) => {
+    md.set({ html: true })
+    XSSPlugin(md, {
+      xss: (xss) => {
+        const whiteList = xss.getDefaultWhiteList()
+        delete whiteList.iframe
+        for (const tag of Object.keys(whiteList)) {
+          whiteList[tag] = [...new Set([...(whiteList[tag] ?? []), 'class'])]
+        }
+        whiteList.img = [...new Set([...(whiteList.img ?? []), 'loading'])]
+        return { whiteList, stripIgnoreTag: true, stripIgnoreTagBody: ['script', 'style'] }
+      },
+    })
+  },
+})
 
 interface MarkdownEditorProps {
   value: string
