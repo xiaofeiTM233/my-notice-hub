@@ -1403,6 +1403,11 @@ img {
   padding: 4px 8px 16px;
   margin-bottom: 8px;
   border-bottom: 1px solid var(--border);
+  color: inherit;
+}
+
+.admin-sider-brand:hover .brand-name {
+  color: var(--brand);
 }
 
 .admin-sider-brand .brand-mark {
@@ -1414,6 +1419,7 @@ img {
 
 .admin-sider-brand .brand-name {
   font-size: 16px;
+  transition: color 0.2s ease;
 }
 
 .admin-sider-brand .brand-sub {

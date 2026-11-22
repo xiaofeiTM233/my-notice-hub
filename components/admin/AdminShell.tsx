@@ -3,6 +3,7 @@
 import {
   FileTextOutlined,
   FolderOpenOutlined,
+  HomeOutlined,
   ImportOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
@@ -77,7 +78,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   const sider = (
     <>
-      <div className="admin-sider-brand">
+      <Link href="/" className="admin-sider-brand" title="返回站点首页">
         <span className="brand-mark" aria-hidden>
           {SITE_NAME.slice(0, 1)}
         </span>
@@ -87,7 +88,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <span className="brand-sub">Admin</span>
           </span>
         )}
-      </div>
+      </Link>
       <div className="admin-sider-menu">{menu}</div>
       {isMobile ? null : (
         <div className="admin-sider-footer">
@@ -119,6 +120,15 @@ export function AdminShell({ children }: { children: ReactNode }) {
           />
           <Breadcrumb items={breadcrumbItems(pathname)} />
           <div className="admin-header-spacer" />
+          <Button
+            type="text"
+            icon={<HomeOutlined />}
+            aria-label="返回站点首页"
+            title="返回站点首页"
+            onClick={() => router.push('/')}
+          >
+            {isMobile ? null : '返回首页'}
+          </Button>
           <ThemeToggle />
           <Dropdown
             menu={{
