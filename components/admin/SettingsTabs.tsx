@@ -169,7 +169,7 @@ function SettingsContent({ data, refresh }: { data: SettingDto; refresh: () => v
       <div className="admin-panel">
         <div className="panel-title">修改密码</div>
         <p className="muted" style={{ marginTop: 0 }}>
-          至少 10 位并包含字母与数字；修改后当前会话立即失效。
+          修改后当前会话立即失效。
         </p>
         <Form<PasswordValues> form={passwordForm} layout="vertical" onFinish={savePassword}>
           <Form.Item
@@ -182,7 +182,7 @@ function SettingsContent({ data, refresh }: { data: SettingDto; refresh: () => v
           <Form.Item
             name="newPassword"
             label="新密码"
-            rules={[{ required: true, min: 10, message: '至少 10 位' }]}
+            rules={[{ required: true, message: '请输入新密码' }]}
           >
             <Input.Password />
           </Form.Item>

@@ -21,10 +21,3 @@ export function verifyPassword(password: string, hash: string, salt: string): bo
   if (expected.length !== actual.length) return false
   return timingSafeEqual(expected, actual)
 }
-
-export function passwordStrengthError(password: string): string | null {
-  if (password.length < 10) return '密码至少 10 位'
-  if (!/[a-zA-Z]/.test(password)) return '密码需包含字母'
-  if (!/\d/.test(password)) return '密码需包含数字'
-  return null
-}

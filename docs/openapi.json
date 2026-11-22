@@ -1256,9 +1256,8 @@
           },
           "newPassword": {
             "type": "string",
-            "minLength": 10,
-            "maxLength": 128,
-            "description": "新密码，至少 10 位"
+            "minLength": 1,
+            "description": "新密码，无强度限制"
           }
         }
       },

@@ -4,7 +4,7 @@ import { encode } from 'next-auth/jwt'
 import dbConnect from '@/lib/db'
 import { badRequest } from '@/lib/server/errors'
 import { requireAdmin } from '@/lib/server/guard'
-import { verifyPassword, passwordStrengthError, hashPassword } from '@/lib/server/auth-password'
+import { verifyPassword, hashPassword } from '@/lib/server/auth-password'
 import { getSetting, clearSettingCache } from '@/lib/server/setting-store'
 import { rateLimit, resetRateLimit } from '@/lib/server/rate-limit'
 import {
@@ -797,7 +797,7 @@ export const MCP_TOOLS: McpTool[] = [
       type: 'object',
       properties: {
         currentPassword: { type: 'string', description: '当前密码' },
-        newPassword: { type: 'string', description: '新密码，至少 10 位且含字母与数字' },
+        newPassword: { type: 'string', description: '新密码，无强度限制' },
       },
       required: ['currentPassword', 'newPassword'],
       additionalProperties: false,
@@ -811,8 +811,6 @@ export const MCP_TOOLS: McpTool[] = [
         throw badRequest('当前密码不正确')
       }
       if (input.currentPassword === input.newPassword) throw badRequest('新密码不能与当前密码相同')
-      const strengthError = passwordStrengthError(input.newPassword)
-      if (strengthError) throw badRequest(strengthError)
 
       const { hash, salt } = hashPassword(input.newPassword)
       await dbConnect()

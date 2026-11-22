@@ -383,7 +383,7 @@ callbacks.jwt / session：写入 username 与 sessionVersion
 - `proxy.ts`：`export { auth as proxy }` + `matcher: ['/admin/:path*', '/api/admin/:path*']`；页面未登录跳 `/admin/login?next=…`，`/api/admin/**` 未登录回 envelope 401。
 - `requireAdmin()`：`auth()` → 比对 `sessionVersion` 与 Setting；**每个管理处理器第一行调用**，不依赖 proxy 单点。
 - 登录限流：同 IP 10 分钟 5 次，超限 429；成功清零（实例内存，Vercel 多实例下为弱限流）。
-- 密码：scrypt + 16 字节随机盐，`timingSafeEqual`；强度 ≥ 10 位且含字母与数字；改密后 `sessionVersion + 1`。
+- 密码：scrypt + 16 字节随机盐，`timingSafeEqual`；密码无强度限制；改密后 `sessionVersion + 1`。
 
 ### 5.6 错误与可观测性
 

@@ -5,7 +5,7 @@ import { withApi } from '@/lib/server/respond'
 import { readJson } from '@/lib/server/params'
 import { requireAdmin } from '@/lib/server/guard'
 import { badRequest } from '@/lib/server/errors'
-import { hashPassword, passwordStrengthError, verifyPassword } from '@/lib/server/auth-password'
+import { hashPassword, verifyPassword } from '@/lib/server/auth-password'
 import { passwordChangeSchema } from '@/lib/shared/contracts/settings'
 import { Setting } from '@/lib/server/models/setting'
 import { clearSettingCache, getSetting } from '@/lib/server/setting-store'
@@ -21,9 +21,6 @@ export const POST = withApi(async (request: NextRequest) => {
     setting.admin.passwordSalt,
   )
   if (!valid) throw badRequest('当前密码不正确')
-
-  const strengthError = passwordStrengthError(input.newPassword)
-  if (strengthError) throw badRequest(strengthError)
 
   const { hash, salt } = hashPassword(input.newPassword)
   await dbConnect()

@@ -32,7 +32,7 @@ export const settingsPatchSchema = z.object({
 
 export const passwordChangeSchema = z.object({
   currentPassword: z.string().min(1, '请输入当前密码'),
-  newPassword: z.string().min(10, '密码至少 10 位').max(128),
+  newPassword: z.string().min(1, '请输入新密码'),
 })
 
 export const storageTestSchema = z.object({
