@@ -76,7 +76,7 @@
 | DELETE | `/api/admin/notices/{id}` | 删除 |
 | POST | `/api/admin/notices/batch` | `{ ids: string[] }`，最多 100 |
 | GET | `/api/admin/media` | `q / type / format / page / pageSize` |
-| POST | `/api/admin/media` | `multipart/form-data`，字段 `file`、可选 `author`；同内容复用已有媒体并回 `deduped: true` |
+| POST | `/api/admin/media` | `multipart/form-data`，字段 `file`、可选 `name` / `author`；同内容复用已有媒体并回 `deduped: true` |
 | PATCH | `/api/admin/media/{id}` | `{ name?, author? }` |
 | DELETE | `/api/admin/media/{id}` | `?force=1` 忽略引用检查 |
 | GET | `/api/admin/import/adapters` | 已注册适配器：`zmd`（聚合接口）、`zmd-web`（官网公告）、`gamekee-ba`（蔚蓝档案活动） |

@@ -65,13 +65,16 @@ export const POST = withApi(async (request: NextRequest) => {
 
   const buffer = Buffer.from(await file.arrayBuffer())
   const format = formatFromFilename(file.name)
-  const authorName = form.get('author')
+  const rawName = form.get('name')
+  const rawAuthor = form.get('author')
+  const name = typeof rawName === 'string' && rawName.trim() ? rawName.trim().slice(0, 120) : file.name
+  const authorName = typeof rawAuthor === 'string' ? rawAuthor.trim().slice(0, 60) : ''
 
   const media = await saveMedia({
-    name: file.name,
+    name,
     buffer,
     format,
-    author: typeof authorName === 'string' && authorName.trim() ? { name: authorName.trim() } : undefined,
+    author: authorName ? { name: authorName } : undefined,
   })
 
   // 命中去重时返回已有媒体，前端提示“已存在同一文件”

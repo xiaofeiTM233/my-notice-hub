@@ -84,6 +84,9 @@ export const LIST_VIEW_LABEL: Record<ListView, string> = {
   feed: '动态流',
 }
 
+export const MEDIA_VIEWS = ['grid', 'table'] as const
+export type MediaView = (typeof MEDIA_VIEWS)[number]
+
 export const THEME_MODES = ['light', 'system', 'dark'] as const
 export type ThemeMode = (typeof THEME_MODES)[number]
 

@@ -1734,6 +1734,40 @@ img {
   padding: 0 8px 8px;
 }
 
+.media-table {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.media-table .ant-table {
+  background: transparent;
+}
+
+.media-table .ant-table-tbody > tr > td {
+  vertical-align: middle;
+}
+
+.media-table-thumb {
+  position: relative;
+  display: block;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  cursor: zoom-in;
+}
+
+.media-table-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 /* fill 模式的图片必须由父级定高，否则会按自身尺寸溢出抽屉 */
 .drawer-preview {
   position: relative;

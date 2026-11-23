@@ -5,16 +5,19 @@ import { createJSONStorage, persist } from 'zustand/middleware'
 import {
   DEFAULT_PAGE_SIZE,
   type ListView,
+  type MediaView,
   type ThemeMode,
 } from '@/lib/shared/constants'
 
 interface UIState {
   themeMode: ThemeMode
   noticeView: ListView
+  mediaView: MediaView
   pageSize: number
   siderCollapsed: boolean
   setThemeMode: (mode: ThemeMode) => void
   setNoticeView: (view: ListView) => void
+  setMediaView: (view: MediaView) => void
   setPageSize: (size: number) => void
   setSiderCollapsed: (collapsed: boolean) => void
 }
@@ -24,10 +27,12 @@ export const useUIStore = create<UIState>()(
     (set) => ({
       themeMode: 'system',
       noticeView: 'card',
+      mediaView: 'grid',
       pageSize: DEFAULT_PAGE_SIZE,
       siderCollapsed: false,
       setThemeMode: (themeMode) => set({ themeMode }),
       setNoticeView: (noticeView) => set({ noticeView }),
+      setMediaView: (mediaView) => set({ mediaView }),
       setPageSize: (pageSize) => set({ pageSize }),
       setSiderCollapsed: (siderCollapsed) => set({ siderCollapsed }),
     }),

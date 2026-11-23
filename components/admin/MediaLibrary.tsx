@@ -1,11 +1,14 @@
 // components/admin/MediaLibrary.tsx
 'use client'
 import {
+  AppstoreOutlined,
   CopyOutlined,
   DeleteOutlined,
   DownloadOutlined,
   EditOutlined,
-  InboxOutlined,
+  EyeOutlined,
+  TableOutlined,
+  UploadOutlined,
 } from '@ant-design/icons'
 import {
   App,
@@ -13,28 +16,39 @@ import {
   Drawer,
   Input,
   Pagination,
+  Segmented,
   Select,
-  Upload,
-  type UploadProps,
+  Table,
+  Tag,
+  type TableColumnsType,
 } from 'antd'
 import { useState } from 'react'
+import { MediaUploadModal } from '@/components/admin/MediaUploadModal'
 import { EmptyState } from '@/components/common/EmptyState'
 import { ErrorState } from '@/components/common/ErrorState'
 import { MediaImage } from '@/components/common/MediaImage'
 import { PageHeader } from '@/components/common/PageHeader'
 import { useApiQuery } from '@/hooks/useApiQuery'
 import { apiFetch } from '@/lib/client/api'
-import { MEDIA_TYPE_LABEL, MEDIA_TYPES, type MediaType } from '@/lib/shared/constants'
+import {
+  MEDIA_TYPE_LABEL,
+  MEDIA_TYPES,
+  type MediaType,
+  type MediaView,
+} from '@/lib/shared/constants'
+import { useUIStore } from '@/lib/client/stores/ui'
 import { formatBytes } from '@/lib/shared/format'
 import type { Paginated } from '@/lib/shared/contracts/common'
 import type { MediaDto } from '@/lib/shared/types'
 
 export function MediaLibrary() {
   const { message, modal } = App.useApp()
+  const view = useUIStore((state) => state.mediaView)
+  const setView = useUIStore((state) => state.setMediaView)
   const [type, setType] = useState<MediaType | ''>('')
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
-  const [uploading, setUploading] = useState(false)
+  const [uploadOpen, setUploadOpen] = useState(false)
   const [preview, setPreview] = useState<MediaDto | null>(null)
 
   const { data, loading, error, refresh } = useApiQuery<Paginated<MediaDto>>('/api/admin/media', {
@@ -43,26 +57,6 @@ export function MediaLibrary() {
     page,
     pageSize: 24,
   })
-
-  const upload = async (file: File) => {
-    const form = new FormData()
-    form.append('file', file)
-    setUploading(true)
-    try {
-      const media = await apiFetch<MediaDto & { deduped?: boolean }>('/api/admin/media', {
-        method: 'POST',
-        body: form,
-      })
-      // 内容相同时后端直接复用已有媒体，提示避免误以为重复上传成功
-      message.success(media.deduped ? '已存在相同文件，复用已有媒体' : '上传成功')
-      refresh()
-    } catch (uploadError) {
-      message.error(uploadError instanceof Error ? uploadError.message : '上传失败')
-    } finally {
-      setUploading(false)
-    }
-    return false
-  }
 
   const copyLink = async (media: MediaDto) => {
     try {
@@ -124,31 +118,133 @@ export function MediaLibrary() {
     })
   }
 
-  const draggerProps: UploadProps = {
-    multiple: false,
-    showUploadList: false,
-    beforeUpload: (file) => {
-      void upload(file as File)
-      return false
+  const columns: TableColumnsType<MediaDto> = [
+    {
+      title: '预览',
+      key: 'preview',
+      width: 72,
+      render: (_value, media) => (
+        <button
+          type="button"
+          className="media-table-thumb"
+          onClick={() => setPreview(media)}
+          aria-label={`预览 ${media.name || media.format}`}
+        >
+          <MediaImage
+            mediaId={media.id}
+            alt={media.name || media.format}
+            fill
+            sizes="40px"
+          />
+        </button>
+      ),
     },
-  }
+    {
+      title: '名称',
+      dataIndex: 'name',
+      render: (_value, media) => (
+        <div className="table-title">
+          <span className="table-title-text">{media.name || '未命名'}</span>
+          {media.author?.name ? (
+            <span className="table-subtitle">{media.author.name}</span>
+          ) : null}
+        </div>
+      ),
+    },
+    {
+      title: '格式',
+      dataIndex: 'format',
+      width: 96,
+      render: (value: string) => <Tag variant="filled">{value.toUpperCase()}</Tag>,
+    },
+    {
+      title: '存储类型',
+      dataIndex: 'type',
+      width: 130,
+      render: (value: MediaType) => MEDIA_TYPE_LABEL[value],
+    },
+    {
+      title: '大小',
+      dataIndex: 'size',
+      width: 100,
+      render: (value?: number) => (value ? formatBytes(value) : '—'),
+    },
+    {
+      title: '操作',
+      key: 'actions',
+      width: 180,
+      render: (_value, media) => (
+        <div className="row actions">
+          <Button
+            size="small"
+            type="text"
+            icon={<EyeOutlined />}
+            onClick={() => setPreview(media)}
+            aria-label="预览"
+          />
+          <Button
+            size="small"
+            type="text"
+            icon={<CopyOutlined />}
+            onClick={() => copyLink(media)}
+            aria-label="复制链接"
+          />
+          <Button
+            size="small"
+            type="text"
+            icon={<EditOutlined />}
+            onClick={() => rename(media)}
+            aria-label="重命名"
+          />
+          <Button
+            size="small"
+            type="text"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => remove(media)}
+            aria-label="删除"
+          />
+        </div>
+      ),
+    },
+  ]
 
   const items = data?.items ?? []
+  const uploadModal = (
+    <MediaUploadModal
+      open={uploadOpen}
+      onCancel={() => setUploadOpen(false)}
+      onUploaded={() => {
+        // 新文件按创建时间倒序排在第一页，上传后回到第一页才能看到
+        if (page === 1) refresh()
+        else setPage(1)
+      }}
+    />
+  )
 
   return (
     <div className="admin-page">
       <PageHeader
         title="媒体库"
         description="媒体只通过站内路由访问，原始存储地址不会暴露。"
+        extra={
+          <>
+            <Segmented
+              size="small"
+              aria-label="切换媒体视图"
+              value={view}
+              onChange={(next) => setView(next as MediaView)}
+              options={[
+                { value: 'grid', label: '卡片', icon: <AppstoreOutlined /> },
+                { value: 'table', label: '表格', icon: <TableOutlined /> },
+              ]}
+            />
+            <Button type="primary" icon={<UploadOutlined />} onClick={() => setUploadOpen(true)}>
+              上传媒体
+            </Button>
+          </>
+        }
       />
-
-      <Upload.Dragger {...draggerProps} disabled={uploading}>
-        <p className="ant-upload-drag-icon">
-          <InboxOutlined />
-        </p>
-        <p className="ant-upload-text">{uploading ? '上传中…' : '点击或拖拽文件到此处上传'}</p>
-        <p className="ant-upload-hint">单文件上限 4 MB，格式由设置页的白名单控制。</p>
-      </Upload.Dragger>
 
       <div className="filter-bar">
         <Input.Search
@@ -180,8 +276,16 @@ export function MediaLibrary() {
       {loading && items.length === 0 ? (
         <div className="muted">加载中…</div>
       ) : items.length === 0 ? (
-        <EmptyState title="媒体库是空的" description="上传图片或附件后，可在编辑器里直接选用" />
-      ) : (
+        <EmptyState
+          title="媒体库是空的"
+          description="上传图片或附件后，可在编辑器里直接选用"
+          action={
+            <Button type="primary" onClick={() => setUploadOpen(true)}>
+              上传媒体
+            </Button>
+          }
+        />
+      ) : view === 'grid' ? (
         <div className="media-grid">
           {items.map((media) => (
             <div key={media.id} className="media-card">
@@ -208,6 +312,18 @@ export function MediaLibrary() {
             </div>
           ))}
         </div>
+      ) : (
+        <div className="media-table">
+          <Table<MediaDto>
+            size="small"
+            rowKey="id"
+            columns={columns}
+            dataSource={items}
+            loading={loading}
+            pagination={false}
+            scroll={{ x: 760 }}
+          />
+        </div>
       )}
 
       {data && data.total > data.pageSize ? (
@@ -220,6 +336,8 @@ export function MediaLibrary() {
           />
         </div>
       ) : null}
+
+      {uploadModal}
 
       <Drawer
         open={preview !== null}

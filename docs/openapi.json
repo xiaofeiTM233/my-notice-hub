@@ -2858,8 +2858,14 @@
                     "format": "binary",
                     "description": "待上传文件，大小不超过 4 MB，扩展名需在设置白名单内"
                   },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 120,
+                    "description": "媒体名称，可选；留空则使用文件名"
+                  },
                   "author": {
                     "type": "string",
+                    "maxLength": 60,
                     "description": "上传者名称，可选；留空则不记录作者"
                   }
                 }
